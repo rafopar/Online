@@ -1,0 +1,21 @@
+This is a very first version of the TBSegments package.
+
+This intends to study TimeBased DC segments, and will have
+tools to study Online DCSegment finding algorithms.
+
+*********************** Build ***********************
+
+* Prerequisits
+  * Root: You need to have the ROOTSYS enviromental variable properly set
+  * HIPO: You need to have a variable $HIPODIR to point to the hipo package
+
+
+* type `make`, and it create an executable FitDCSegments.exe
+
+
+ *********************** Run ***********************
+* you also need set the LD_LIBRARY_PATH to the pwd/lib
+  
+Either add it into your .basrc/.cshrc or run
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/lib   # in bash
+setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:`pwd`/lib   # in bash
