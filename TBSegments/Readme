@@ -19,3 +19,8 @@ tools to study Online DCSegment finding algorithms.
 Either add it into your .basrc/.cshrc or run
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/lib   # in bash
 setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:`pwd`/lib   # in bash
+
+* Another variable that needs to be set is $ONLINE_DIR which needs
+to point to the base directory /base/directory/Online . This env variable is
+needed as the program reads DC wire properties (positions) from a specific
+files accessed theough $ONLINE_DIR variable
