@@ -10,6 +10,8 @@
 #include <DCObjects.h>
 
 // Root includes
+#include <TMath.h>
+#include <TGLabel.h>
 #include <TGFrame.h>
 #include <TGButton.h>
 #include <TGMsgBox.h>
@@ -25,8 +27,9 @@ SegDisplay::SegDisplay(const TGWindow *p, UInt_t w, UInt_t h) {
 
     fMain = new TGMainFrame(p, w, h, kHorizontalFrame);
     fMain->Connect("CloseWindow()", "SegDisplay", this, "CloseApp()");
-    fECanvas = new TRootEmbeddedCanvas("Ecanvas", fMain, 1050, 700);
-    //fECanvas->Connect("ProcessedEvent(int, int, int, TObject*)", "SegDisplay", this, "MouseZoom(int, int, int, TObject *)");
+
+    TGHorizontalFrame *hframelow = new TGHorizontalFrame(fMain, 1050, 550, kHorizontalFrame);
+    // = new TRootEmbeddedCanvas("Ecanvas", hframelow, 1050, 700);
 
     vframe = new TGVerticalFrame(fMain, 200, 40);
 
@@ -34,20 +37,88 @@ SegDisplay::SegDisplay(const TGWindow *p, UInt_t w, UInt_t h) {
     but_Open->Connect("Clicked()", "SegDisplay", this, "OpenInpFile()");
     vframe->AddFrame(but_Open, new TGLayoutHints(kLHintsCenterX, 5, 5, 3, 4));
 
-    but_next = new TGTextButton(vframe, "&Next");
-    but_next->Connect("Clicked()", "SegDisplay", this, "Next()");
-    vframe->AddFrame(but_next, new TGLayoutHints(kLHintsCenterX, 5, 5, 3, 4));
+    fG_RunControls = new TGGroupFrame(vframe, new TGString("Run Controls"), kVerticalFrame);
 
+    but_next = new TGTextButton(fG_RunControls, "&Next");
+    but_next->Connect("Clicked()", "SegDisplay", this, "Next()");
+    fG_RunControls->AddFrame(but_next, new TGLayoutHints(kLHintsCenterX, 5, 5, 3, 4));
+
+
+    TGHorizontalFrame *hframe_Run = new TGHorizontalFrame(fG_RunControls, 30, 10);
+
+    TGTextButton *but_Run = new TGTextButton(hframe_Run, "&Run");
+    but_Run->Connect("Clicked()", "SegDisplay", this, "AnalyzeNEvents()");
+    hframe_Run->AddFrame(but_Run, new TGLayoutHints(kLHintsLeft, 1, 1, 1, 1));
+
+
+    nmb_nev2Run = new TGNumberEntry(hframe_Run, 20000, 9, -1, TGNumberFormat::EStyle::kNESInteger,
+            TGNumberFormat::EAttribute::kNEAPositive);
+    hframe_Run->AddFrame(nmb_nev2Run, new TGLayoutHints(kLHintsRight, 1, 1, 1, 1));
+
+    fG_RunControls->AddFrame(hframe_Run);
+
+    vframe->AddFrame(fG_RunControls, new TGLayoutHints(kLHintsCenterX, 1, 1, 1, 1));
+
+
+    fG_docaControls = new TGGroupFrame(vframe, new TGString("DOCA Controls"), kVerticalFrame);
+    vframe->AddFrame(fG_docaControls, new TGLayoutHints(kLHintsCenterX, 1, 1, 1, 1));
+    
+    TGTextButton *fBut_ResetDocaPars = new TGTextButton(fG_docaControls, "&Reset Doca Parameters");
+    fBut_ResetDocaPars->Connect("Clicked()", "SegDisplay", this, "ResetDoca()");
+    fG_docaControls->AddFrame(fBut_ResetDocaPars, new TGLayoutHints(kLHintsTop, 1, 1, 1, 1));
+    
+    TGHorizontalFrame * fr_TMinMax[nSL];
+    TGLabel * lbl_MInMax[nSL];
+
+    for (int iSL = 0; iSL < nSL; iSL++) {
+        fr_TMinMax[iSL] = new TGHorizontalFrame(fG_docaControls, 100, 50);
+        lbl_MInMax[iSL] = new TGLabel(fr_TMinMax[iSL], Form("SL %d, Tmin, Tmax: min, max", iSL));
+        fr_TMinMax[iSL]->AddFrame(lbl_MInMax[iSL], new TGLayoutHints(kLHintsLeft, 1, 1, 1, 1));
+        sl_TMinMax[iSL] = new TGDoubleHSlider(fr_TMinMax[iSL], 200, kDoubleScaleBoth);
+        sl_TMinMax[iSL]->SetRange(0., 1000.);
+        sl_TMinMax[iSL]->Connect("PositionChanged()", "SegDisplay", this, "UpdateEvent()");
+
+        fr_TMinMax[iSL]->AddFrame(sl_TMinMax[iSL], new TGLayoutHints(kLHintsRight, 1, 1, 1, 1));
+        fG_docaControls->AddFrame(fr_TMinMax[iSL], new TGLayoutHints(kLHintsCenterX, 1, 1, 1, 1));
+    }
+
+
+
+
+
+
+
+    /**
+     * Button Exit
+     */
     but_Exit = new TGTextButton(vframe, "&Exit");
     but_Exit->Connect("Clicked()", "SegDisplay", this, "CloseApp()");
     vframe->AddFrame(but_Exit, new TGLayoutHints(kLHintsCenterX, 1, 1, 1, 1));
 
+
+    /**
+     * Tabs
+     */
+
+    fTab = new TGTab(fMain, 1000, 100);
+    fTab->Connect("Selected(Int_t)", "SegDisplay", this, "DoTab(Int_t)");
+
+    TGCompositeFrame *tf_DCHits = (TGCompositeFrame*) fTab->AddTab("Segments");
+    fEC_DCHits = new TRootEmbeddedCanvas("fEC_DCHits", tf_DCHits, 1050, 700);
+    tf_DCHits->AddFrame(fEC_DCHits, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY, 2, 2, 2, 2));
+
+    TGCompositeFrame *tf_FitQual = (TGCompositeFrame*) fTab->AddTab("Fit quality");
+
+    fEC_Chi2Seg = new TRootEmbeddedCanvas("fEC_Chi2Seg", tf_FitQual, 1050, 700);
+    tf_FitQual->AddFrame(fEC_Chi2Seg, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY, 2, 2, 2, 2));
+
+
+
     fMain->AddFrame(vframe, new TGLayoutHints(kLHintsLeft, 2, 2, 2, 2));
-    fMain->AddFrame(fECanvas, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY, 2, 2, 2, 2));
+    fMain->AddFrame(fTab, new TGLayoutHints(kLHintsRight, 2, 2, 2, 2));
+
     fMain->MapSubwindows();
-
     fMain->Resize(fMain->GetDefaultSize());
-
     fMain->MapWindow();
 
 
@@ -59,6 +130,9 @@ SegDisplay::SegDisplay(const TGWindow *p, UInt_t w, UInt_t h) {
 void SegDisplay::InitSettings() {
 
     cout << "**** InitSettings Kuku1" << endl;
+
+    ReadDocaPars();
+
     DCConsts = DCConstants();
     fInpFileName = "";
     fHipoDir = "~/";
@@ -68,24 +142,77 @@ void SegDisplay::InitSettings() {
     lineRawFit.SetLineColor(2);
     circRawDoca = TArc();
     circRawDoca.SetLineColor(4);
-    c_DCHits = fECanvas->GetCanvas();
+    c_DCHits = fEC_DCHits->GetCanvas();
     c_DCHits->Divide(3, 2, 0., 0.);
+
+    c_Chi2Seg = fEC_Chi2Seg->GetCanvas();
+    c_Chi2Seg->Divide(3, 2);
+
     cout << "**** InitSettings Kuku2" << endl;
 
     c_DCHits->FeedbackMode(kTRUE);
-    
+
     TList *l_primitives = c_DCHits->GetListOfPrimitives();
-    
-    for( int il = 0; il < l_primitives->GetEntries(); il++ ){
-        cout<<l_primitives->At(il)->GetName()<<endl;
+
+    for (int il = 0; il < l_primitives->GetEntries(); il++) {
+        cout << l_primitives->At(il)->GetName() << endl;
     }
-    
+
+
+    /**
+     * Chi2 bins are not uniform
+     */
+    for (int i = 0; i < nChi2Bins + 1; i++) {
+        chi2Bins[i] = TMath::Power(10, double(i) / 15.);
+    }
+
     for (int isec = 0; isec < DCConstants::nSect; isec++) {
-        p_c_DCHits_[isec] = (TPad*) c_DCHits->GetPrimitive(Form("Ecanvas_%d", isec +1 ));
-        //p_c_DCHits_[isec]->Connect("ProcessedEvent(int, int, int, TObject*)", "SegDisplay", this, "MouseZoom(int, int, int, TObject *)");
-        //((TPad*)c_DCHits->cd(isec + 1))->FeedbackMode(kTRUE);
+        p_c_DCHits_[isec] = (TPad*) c_DCHits->GetPrimitive(Form("Ecanvas_%d", isec + 1));
+        h_DC_Segments_[isec] = new TH2F(Form("h_DC_Segments_%d", isec), "", 100, -200., 220., 100, 200., 550.);
+        h_DC_Segments_[isec]->SetStats(0);
+
+        c_Chi2Seg->cd(isec + 1)->SetLogx();
+        h_Chi2_SegFit_[isec] = new TH1D(Form("h_Chi2_SegFit_%d", isec), "", nChi2Bins, chi2Bins);
     }
     cout << "**** InitSettings Kuku3" << endl;
+
+
+    for (int iSL = 0; iSL < nSL; iSL++) {
+        sl_TMinMax[iSL]->SetPosition(tMin[iSL], tMax[iSL]);
+    }
+
+}
+
+void SegDisplay::ReadDocaPars() {
+    onlineDir = std::getenv("ONLINE_DIR");
+    docaParFilename = "TBSegments/DataFiles/doca_pars.txt";
+    std::string fnameDocaPars = onlineDir + "/" + docaParFilename;
+
+    ifstream inpDocaPars(fnameDocaPars);
+    cout << "** ************* Reading DOCA Paramaters: Tmin, Tmax and D0 *********** " << endl;
+    cout << "**  The file path is " << fnameDocaPars << endl;
+    cout << endl;
+
+    if (inpDocaPars.is_open()) {
+        cout << "**  The file successfully opened" << endl;
+        cout << endl;
+
+        while (!inpDocaPars.eof()) {
+            int SL;
+            inpDocaPars >> SL;
+            inpDocaPars >> tMin[SL];
+            inpDocaPars >> tMax[SL];
+            inpDocaPars >> DMax[SL];
+            
+            sl_TMinMax[SL]->SetPosition(tMin[SL], tMax[SL]);
+        }
+
+    } else {
+        cout << "Can not open the file " << fnameDocaPars << endl;
+        cout << "exiting" << endl;
+        exit(1);
+    }
+
 }
 
 bool SegDisplay::RunEvents(int nev) {
@@ -117,18 +244,54 @@ bool SegDisplay::RunEvents(int nev) {
 
 void SegDisplay::CloseApp() {
     cout << " Exiting the SegDisplay. \n Good bye,  Ցտեսություն, До свидания" << endl;
+
+    for (int iSec = 0; iSec < nSec; iSec++) {
+        delete h_DC_Segments_[iSec];
+    }
     gApplication->Terminate(0);
 }
 
 void SegDisplay::Next() {
     for (int isec = 0; isec < DCConstants::nSect; isec++) {
         c_DCHits->cd(isec + 1)->Clear();
-        c_DCHits->cd(isec + 1)->DrawFrame(-200., 220., 200., 550.);
+        h_DC_Segments_[isec]->Reset();
+        h_DC_Segments_[isec]->GetYaxis()->UnZoom();
+        h_DC_Segments_[isec]->GetXaxis()->UnZoom();
+        h_DC_Segments_[isec]->Draw();
     }
     IsSingleEvent = true;
     RunEvents(1);
     c_DCHits->Modified();
     c_DCHits->Update();
+}
+
+void SegDisplay::AnalyzeNEvents() {
+
+    fNev = (Int_t) nmb_nev2Run->GetNumber();
+
+    if (fNev < 0) {
+        popupMSG("Number of events to run should be a positive number");
+    }
+    if (fNev == 1) {
+        IsSingleEvent = true;
+    } else {
+        IsSingleEvent = false;
+    }
+
+
+    for (int isec = 0; isec < DCConstants::nSect; isec++) {
+        h_Chi2_SegFit_[isec]->Reset();
+    }
+
+    RunEvents(fNev);
+
+    for (int isec = 0; isec < DCConstants::nSect; isec++) {
+        c_Chi2Seg->cd(isec + 1);
+        ConvertDifferential(h_Chi2_SegFit_[isec]);
+        h_Chi2_SegFit_[isec]->Draw();
+    }
+    c_Chi2Seg->Modified();
+    c_Chi2Seg->Update();
 }
 
 void SegDisplay::OpenInpFile() {
@@ -174,7 +337,7 @@ bool SegDisplay::ProcessDCSeg(hipo::event &event) {
         double w_Xmid = DCConsts.w_midpoint_x[layer][w];
         double w_Ymid = DCConsts.w_midpoint_y[layer][w];
 
-        double r = (tdc - DCConstants::tMin[SL]) * DCConstants::DMax[SL] / DCConstants::tMax[SL];
+        double r = (tdc - tMin[SL]) * DMax[SL] / tMax[SL];
         double err_r = 0.15 * r;
 
         if (IsSingleEvent) {
@@ -206,11 +369,14 @@ bool SegDisplay::ProcessDCSeg(hipo::event &event) {
                 double x_0 = curSegm.at(0).x < curSegm.at(curSegm.size() - 1).x ? curSegm.at(0).x - curSegm.at(0).r : curSegm.at(curSegm.size() - 1).x - curSegm.at(curSegm.size() - 1).r;
                 double x_max = curSegm.at(0).x > curSegm.at(curSegm.size() - 1).x ? curSegm.at(0).x + curSegm.at(0).r : curSegm.at(curSegm.size() - 1).x + curSegm.at(curSegm.size() - 1).r;
 
-
-                if (chi2 > 10000) {
-                    lineRawFit.DrawLine(x_0, slope * x_0 + offset, x_max, slope * x_max + offset);
+                if (IsSingleEvent) {
+                    if (chi2 > 10000) {
+                        c_DCHits->cd(isec + 1);
+                        lineRawFit.DrawLine(x_0, slope * x_0 + offset, x_max, slope * x_max + offset);
+                    }
+                } else {
+                    h_Chi2_SegFit_[isec]->Fill(chi2);
                 }
-
             }
 
         }
@@ -234,6 +400,47 @@ void SegDisplay::MouseZoom(int event, int ix, int iy, TObject * selected) {
 
 void SegDisplay::popupMSG(std::string a) {
     new TGMsgBox(gClient->GetRoot(), fMain, "Message", a.c_str(), kMBIconExclamation);
+}
+
+void SegDisplay::DoTab(Int_t tab) {
+    cout << "Changed to the Tab " << tab << endl;
+}
+
+void SegDisplay::ConvertDifferential(TH1* h) {
+    for (int i = 0; i < h->GetNbinsX(); i++) {
+        h->SetBinContent(i + 1, h->GetBinContent(i + 1) / h->GetBinWidth(i + 1));
+    }
+}
+
+void SegDisplay::UpdateEvent() {
+
+    if (!IsFileOpened) {
+        return;
+    }
+
+    // Loop over all SLs, to updated DOCD related parameters tMin, tMax and Dmax
+    for (int iSL = 0; iSL < nSL; iSL++) {
+        sl_TMinMax[iSL]->GetPosition(&tMin[iSL], &tMax[iSL]);
+    }
+
+    for (int isec = 0; isec < DCConstants::nSect; isec++) {
+        c_DCHits->cd(isec + 1)->Clear();
+        h_DC_Segments_[isec]->Reset();
+//        h_DC_Segments_[isec]->GetYaxis()->UnZoom();
+//        h_DC_Segments_[isec]->GetXaxis()->UnZoom();
+        h_DC_Segments_[isec]->Draw();
+    }
+    IsSingleEvent = true;
+    ProcessDCSeg(fEvent);
+    c_DCHits->Modified();
+    c_DCHits->Update();
+}
+
+void SegDisplay::ResetDoca(){
+    // Read the parameters from the file and assign o tMin, tMax and dMax
+    ReadDocaPars();
+    // Update the viewer
+    UpdateEvent();
 }
 
 SegDisplay::SegDisplay(const SegDisplay& orig) {
