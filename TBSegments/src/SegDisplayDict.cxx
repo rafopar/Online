@@ -54,7 +54,7 @@ namespace ROOT {
       ::SegDisplay *ptr = 0;
       static ::TVirtualIsAProxy* isa_proxy = new ::TIsAProxy(typeid(::SegDisplay));
       static ::ROOT::TGenericClassInfo 
-         instance("SegDisplay", "SegDisplay.h", 28,
+         instance("SegDisplay", "SegDisplay.h", 32,
                   typeid(::SegDisplay), ::ROOT::Internal::DefineBehavior(ptr, ptr),
                   &SegDisplay_Dictionary, isa_proxy, 0,
                   sizeof(::SegDisplay) );

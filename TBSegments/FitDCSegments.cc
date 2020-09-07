@@ -133,7 +133,8 @@ int main(int argc, char** argv) {
             double w_Xmid = dcConsts.w_midpoint_x[layer][w];
             double w_Ymid = dcConsts.w_midpoint_y[layer][w];
 
-            double r = (tdc - dcConsts.tMin[SL]) * DCConstants::DMax[SL] / DCConstants::tMax[SL];
+            //double r = (tdc - dcConsts.tMin[SL]) * DCConstants::DMax[SL] / DCConstants::tMax[SL];
+            double r = (tdc - dcConsts.tMin[SL]) * dcConsts.DMax[SL] / dcConsts.tMax[SL];
             double err_r = 0.15 * r;
 
             hitSet[layer].insert(DCHit(sec, layer, w, w_Xmid, w_Ymid, r, err_r));

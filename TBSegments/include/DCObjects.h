@@ -29,15 +29,16 @@ public:
     static double w_midpoint_x[nLayerperSec][nWirePerLayer];
     static double w_midpoint_y[nLayerperSec][nWirePerLayer];
 
-    static const double tMin[nSL];
-    static const double tMax[nSL];
-    static const double DMax[nSL];
+    double tMin[nSL];
+    double tMax[nSL];
+    double DMax[nSL];
 
 private:
     void Init();
 
     std::string wireMidpointFileName;
     std::string onlineDir;
+    std::string docaParFilename;
 };
 
 /**

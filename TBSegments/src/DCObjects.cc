@@ -17,11 +17,13 @@ DCConstants::DCConstants() {
 double DCConstants::w_midpoint_y[nLayerperSec][nWirePerLayer] = {0};
 double DCConstants::w_midpoint_x[nLayerperSec][nWirePerLayer] = {0};
 
-const double DCConstants::tMin[nSL] = {125., 123., 120., 120., 120., 140.};
-const double DCConstants::tMax[nSL] = {295., 293., 620., 620., 800., 850.};
-const double DCConstants::DMax[nSL] = {0.78, 0.81, 1.14, 1.32, 1.87, 1.96};
 
 void DCConstants::Init() {
+
+
+//    const double DCConstants::DMax[nSL] = {0.78, 0.81, 1.14, 1.32, 1.87, 1.96};
+//    tMin = {125., 123., 120., 120., 120., 140.};
+//    tMax = {295., 293., 620., 620., 800., 850.};
 
     wireMidpointFileName = "TBSegments/DataFiles/wires_midpoint.txt";
     onlineDir = std::getenv("ONLINE_DIR");
@@ -50,6 +52,38 @@ void DCConstants::Init() {
         cout << "exiting" << endl;
         exit(1);
     }
+
+
+    /**
+     * Reading DOCA parameters, Columns of the txt file is as follows:
+     * SL(SuperLayer)   Tmin    Tmax    Dmax
+     */
+    docaParFilename = "TBSegments/DataFiles/doca_pars.txt";
+    std::string fnameDocaPars = onlineDir + "/" + docaParFilename;
+
+    ifstream inpDocaPars(fnameDocaPars);
+    cout << "** ************* Reading DOCA Paramaters: Tmin, Tmax and D0 *********** " << endl;
+    cout << "**  The file path is " << fnameDocaPars << endl;
+    cout << endl;
+
+    if (inpDocaPars.is_open()) {
+        cout << "**  The file successfully opened" << endl;
+        cout << endl;
+
+        while( !inpDocaPars.eof() ){
+            int SL;
+            inpDocaPars >> SL;
+            inpDocaPars >> tMin[SL];
+            inpDocaPars >> tMax[SL];
+            inpDocaPars >> DMax[SL];            
+        }
+        
+    } else {
+        cout << "Can not open the file " << fnamewireMidpoints << endl;
+        cout << "exiting" << endl;
+        exit(1);
+    }
+
 
 }
 
