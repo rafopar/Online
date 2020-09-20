@@ -124,6 +124,8 @@ public:
         return fChi2;
     }
 
+    double CalcDocaError(double); // Calculates the DOCA error. According to the DC recon code // referred there as Mac's formula
+
 private:
     double slope;
     double offset;

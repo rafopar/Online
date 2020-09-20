@@ -75,7 +75,7 @@ SegDisplay::SegDisplay(const TGWindow *p, UInt_t w, UInt_t h) {
         lbl_MInMax[iSL] = new TGLabel(fr_TMinMax[iSL], Form("SL %d, Tmin, Tmax: min, max", iSL));
         fr_TMinMax[iSL]->AddFrame(lbl_MInMax[iSL], new TGLayoutHints(kLHintsLeft, 1, 1, 1, 1));
         sl_TMinMax[iSL] = new TGDoubleHSlider(fr_TMinMax[iSL], 200, kDoubleScaleBoth);
-        sl_TMinMax[iSL]->SetRange(0., 1000.);
+        sl_TMinMax[iSL]->SetRange(0., 1500.);
         sl_TMinMax[iSL]->Connect("PositionChanged()", "SegDisplay", this, "UpdateEvent()");
 
         fr_TMinMax[iSL]->AddFrame(sl_TMinMax[iSL], new TGLayoutHints(kLHintsRight, 1, 1, 1, 1));
@@ -337,8 +337,10 @@ bool SegDisplay::ProcessDCSeg(hipo::event &event) {
         double w_Xmid = DCConsts.w_midpoint_x[layer][w];
         double w_Ymid = DCConsts.w_midpoint_y[layer][w];
 
-        double r = (tdc - tMin[SL]) * DMax[SL] / tMax[SL];
-        double err_r = 0.15 * r;
+        double r = TMath::Max((tdc - tMin[SL]), float(0.)) * DMax[SL] / tMax[SL];
+        double x = TMath::Min(float(r), float(DMax[SL]))/DMax[SL];
+        double err_r = CalcDocaError(x)*DMax[SL];
+        //double err_r = 0.15 * r;
 
         if (IsSingleEvent) {
             c_DCHits->cd(sec + 1);
@@ -370,7 +372,7 @@ bool SegDisplay::ProcessDCSeg(hipo::event &event) {
                 double x_max = curSegm.at(0).x > curSegm.at(curSegm.size() - 1).x ? curSegm.at(0).x + curSegm.at(0).r : curSegm.at(curSegm.size() - 1).x + curSegm.at(curSegm.size() - 1).r;
 
                 if (IsSingleEvent) {
-                    if (chi2 > 10000) {
+                    if ( chi2 > 500000 ) {
                         c_DCHits->cd(isec + 1);
                         lineRawFit.DrawLine(x_0, slope * x_0 + offset, x_max, slope * x_max + offset);
                     }
@@ -384,6 +386,12 @@ bool SegDisplay::ProcessDCSeg(hipo::event &event) {
     }
 
 
+}
+
+double SegDisplay::CalcDocaError(double x){
+    // x is doca/d_Max
+    
+   return 0.06 - 0.14 * TMath::Power(x,1.5) + 0.18 * TMath::Power(x,2.5);
 }
 
 void SegDisplay::MouseZoom(int event, int ix, int iy, TObject * selected) {

@@ -280,6 +280,12 @@ vector<DCHit> SegFitter::GetRotatedHits(const vector<DCHit> inpHits, double alph
 
 }
 
+double SegFitter::CalcDocaError(double x){
+    // x is doca/d_Max
+    
+   return 0.06 - 0.14 * TMath::Power(x,1.5) + 0.18 * TMath::Power(x,2.5);
+}
+
 double SegFitter::FitCircles(const vector<DCHit> v_inp, double &chi2) {
 
     double A = 0, B = 0, C = 0, D = 0;
