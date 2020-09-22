@@ -15,6 +15,7 @@
 #include <TGFrame.h>
 #include <TGButton.h>
 #include <TGMsgBox.h>
+#include <TVirtualX.h>
 #include <TApplication.h>
 #include <TGFileDialog.h>
 
@@ -62,11 +63,11 @@ SegDisplay::SegDisplay(const TGWindow *p, UInt_t w, UInt_t h) {
 
     fG_docaControls = new TGGroupFrame(vframe, new TGString("DOCA Controls"), kVerticalFrame);
     vframe->AddFrame(fG_docaControls, new TGLayoutHints(kLHintsCenterX, 1, 1, 1, 1));
-    
+
     TGTextButton *fBut_ResetDocaPars = new TGTextButton(fG_docaControls, "&Reset Doca Parameters");
     fBut_ResetDocaPars->Connect("Clicked()", "SegDisplay", this, "ResetDoca()");
     fG_docaControls->AddFrame(fBut_ResetDocaPars, new TGLayoutHints(kLHintsTop, 1, 1, 1, 1));
-    
+
     TGHorizontalFrame * fr_TMinMax[nSL];
     TGLabel * lbl_MInMax[nSL];
 
@@ -104,8 +105,26 @@ SegDisplay::SegDisplay(const TGWindow *p, UInt_t w, UInt_t h) {
     fTab->Connect("Selected(Int_t)", "SegDisplay", this, "DoTab(Int_t)");
 
     TGCompositeFrame *tf_DCHits = (TGCompositeFrame*) fTab->AddTab("Segments");
-    fEC_DCHits = new TRootEmbeddedCanvas("fEC_DCHits", tf_DCHits, 1050, 700);
-    tf_DCHits->AddFrame(fEC_DCHits, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY, 2, 2, 2, 2));
+
+    // A Horizontal frame that will contain canvases for secors 1, 2 and 3
+    TGHorizontalFrame *fr_DCHitsSec_123 = new TGHorizontalFrame(tf_DCHits, 30, 10);
+    for (int i = 0; i < 3; i++) {
+        fEC_DCHits[i] = new TRootEmbeddedCanvas(Form("fEC_DCHits_%d", i), fr_DCHitsSec_123, 340, 340);
+
+        fr_DCHitsSec_123->AddFrame(fEC_DCHits[i], new TGLayoutHints(kLHintsCenterX, 2, 2, 2, 2));
+    }
+    tf_DCHits->AddFrame(fr_DCHitsSec_123, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY, 2, 2, 2, 2));
+
+    // A Horizontal frame that will contain canvases for secors 1, 2 and 3
+    TGHorizontalFrame *fr_DCHitsSec_456 = new TGHorizontalFrame(tf_DCHits, 30, 10);
+    for (int i = 3; i < 6; i++) {
+        fEC_DCHits[i] = new TRootEmbeddedCanvas(Form("fEC_DCHits_%d", i), fr_DCHitsSec_456, 340, 340);
+        fr_DCHitsSec_456->AddFrame(fEC_DCHits[i], new TGLayoutHints(kLHintsCenterX, 2, 2, 2, 2));
+    }
+    tf_DCHits->AddFrame(fr_DCHitsSec_456, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY, 2, 2, 2, 2));
+
+    //    fEC_DCHits = new TRootEmbeddedCanvas("fEC_DCHits", tf_DCHits, 1050, 700);
+    //    tf_DCHits->AddFrame(fEC_DCHits, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY, 2, 2, 2, 2));
 
     TGCompositeFrame *tf_FitQual = (TGCompositeFrame*) fTab->AddTab("Fit quality");
 
@@ -142,22 +161,24 @@ void SegDisplay::InitSettings() {
     lineRawFit.SetLineColor(2);
     circRawDoca = TArc();
     circRawDoca.SetLineColor(4);
-    c_DCHits = fEC_DCHits->GetCanvas();
-    c_DCHits->Divide(3, 2, 0., 0.);
+
+    for (int i = 0; i < 6; i++) {
+        c_DCHits[i] = fEC_DCHits[i]->GetCanvas();
+        c_DCHits[i]->SetTopMargin(0);
+        c_DCHits[i]->SetBottomMargin(0);
+        c_DCHits[i]->SetLeftMargin(0);
+        c_DCHits[i]->SetRightMargin(0);
+        c_DCHits[i]->Range(DCConsts.xMin, DCConsts.yMin, DCConsts.xMax, DCConsts.yMax);
+        c_DCHits[i]->FeedbackMode(kTRUE);
+        c_DCHits[i]->Connect("ProcessedEvent(Int_t, Int_t, Int_t, TObject*)", "SegDisplay", this,
+                "MouseAction(Int_t, Int_t, Int_t, TObject*)");
+        //   c_DCHits->Divide(3, 2, 0., 0.);
+    }
 
     c_Chi2Seg = fEC_Chi2Seg->GetCanvas();
     c_Chi2Seg->Divide(3, 2);
 
     cout << "**** InitSettings Kuku2" << endl;
-
-    c_DCHits->FeedbackMode(kTRUE);
-
-    TList *l_primitives = c_DCHits->GetListOfPrimitives();
-
-    for (int il = 0; il < l_primitives->GetEntries(); il++) {
-        cout << l_primitives->At(il)->GetName() << endl;
-    }
-
 
     /**
      * Chi2 bins are not uniform
@@ -167,9 +188,8 @@ void SegDisplay::InitSettings() {
     }
 
     for (int isec = 0; isec < DCConstants::nSect; isec++) {
-        p_c_DCHits_[isec] = (TPad*) c_DCHits->GetPrimitive(Form("Ecanvas_%d", isec + 1));
-        h_DC_Segments_[isec] = new TH2F(Form("h_DC_Segments_%d", isec), "", 100, -200., 220., 100, 200., 550.);
-        h_DC_Segments_[isec]->SetStats(0);
+        //        h_DC_Segments_[isec] = new TH2F(Form("h_DC_Segments_%d", isec), "", 100, -200., 220., 100, 200., 550.);
+        //        h_DC_Segments_[isec]->SetStats(0);
 
         c_Chi2Seg->cd(isec + 1)->SetLogx();
         h_Chi2_SegFit_[isec] = new TH1D(Form("h_Chi2_SegFit_%d", isec), "", nChi2Bins, chi2Bins);
@@ -203,7 +223,7 @@ void SegDisplay::ReadDocaPars() {
             inpDocaPars >> tMin[SL];
             inpDocaPars >> tMax[SL];
             inpDocaPars >> DMax[SL];
-            
+
             sl_TMinMax[SL]->SetPosition(tMin[SL], tMax[SL]);
         }
 
@@ -245,24 +265,30 @@ bool SegDisplay::RunEvents(int nev) {
 void SegDisplay::CloseApp() {
     cout << " Exiting the SegDisplay. \n Good bye,  Ցտեսություն, До свидания" << endl;
 
-    for (int iSec = 0; iSec < nSec; iSec++) {
-        delete h_DC_Segments_[iSec];
-    }
+    //    for (int iSec = 0; iSec < nSec; iSec++) {
+    //        delete h_DC_Segments_[iSec];
+    //    }
     gApplication->Terminate(0);
 }
 
 void SegDisplay::Next() {
     for (int isec = 0; isec < DCConstants::nSect; isec++) {
-        c_DCHits->cd(isec + 1)->Clear();
-        h_DC_Segments_[isec]->Reset();
-        h_DC_Segments_[isec]->GetYaxis()->UnZoom();
-        h_DC_Segments_[isec]->GetXaxis()->UnZoom();
-        h_DC_Segments_[isec]->Draw();
+        c_DCHits[isec]->Clear();
+        c_DCHits[isec]->cd();
+        c_DCHits[isec]->Range(DCConsts.xMin, DCConsts.yMin, DCConsts.xMax, DCConsts.yMax);
+        //        h_DC_Segments_[isec]->Reset();
+        //        h_DC_Segments_[isec]->GetYaxis()->UnZoom();
+        //        h_DC_Segments_[isec]->GetXaxis()->UnZoom();
+        //        h_DC_Segments_[isec]->Draw();
     }
     IsSingleEvent = true;
     RunEvents(1);
-    c_DCHits->Modified();
-    c_DCHits->Update();
+
+    for (int isec = 0; isec < DCConstants::nSect; isec++) {
+        c_DCHits[isec]->Modified();
+        c_DCHits[isec]->Update();
+    }
+
 }
 
 void SegDisplay::AnalyzeNEvents() {
@@ -338,12 +364,12 @@ bool SegDisplay::ProcessDCSeg(hipo::event &event) {
         double w_Ymid = DCConsts.w_midpoint_y[layer][w];
 
         double r = TMath::Max((tdc - tMin[SL]), float(0.)) * DMax[SL] / tMax[SL];
-        double x = TMath::Min(float(r), float(DMax[SL]))/DMax[SL];
-        double err_r = CalcDocaError(x)*DMax[SL];
+        double x = TMath::Min(float(r), float(DMax[SL])) / DMax[SL];
+        double err_r = CalcDocaError(x) * DMax[SL];
         //double err_r = 0.15 * r;
 
         if (IsSingleEvent) {
-            c_DCHits->cd(sec + 1);
+            c_DCHits[sec]->cd();
             circRawDoca.DrawArc(w_Xmid, w_Ymid, r);
         }
 
@@ -372,8 +398,8 @@ bool SegDisplay::ProcessDCSeg(hipo::event &event) {
                 double x_max = curSegm.at(0).x > curSegm.at(curSegm.size() - 1).x ? curSegm.at(0).x + curSegm.at(0).r : curSegm.at(curSegm.size() - 1).x + curSegm.at(curSegm.size() - 1).r;
 
                 if (IsSingleEvent) {
-                    if ( chi2 > 500000 ) {
-                        c_DCHits->cd(isec + 1);
+                    if (chi2 > 500000) {
+                        c_DCHits[isec]->cd();
                         lineRawFit.DrawLine(x_0, slope * x_0 + offset, x_max, slope * x_max + offset);
                     }
                 } else {
@@ -388,22 +414,10 @@ bool SegDisplay::ProcessDCSeg(hipo::event &event) {
 
 }
 
-double SegDisplay::CalcDocaError(double x){
+double SegDisplay::CalcDocaError(double x) {
     // x is doca/d_Max
-    
-   return 0.06 - 0.14 * TMath::Power(x,1.5) + 0.18 * TMath::Power(x,2.5);
-}
 
-void SegDisplay::MouseZoom(int event, int ix, int iy, TObject * selected) {
-
-
-    cout << "Kuku" << endl;
-    if (event == kMouseEnter) {
-        cout << "Slected is " << selected->GetName() << endl;
-        return;
-    }
-
-    return;
+    return 0.06 - 0.14 * TMath::Power(x, 1.5) + 0.18 * TMath::Power(x, 2.5);
 }
 
 void SegDisplay::popupMSG(std::string a) {
@@ -432,26 +446,116 @@ void SegDisplay::UpdateEvent() {
     }
 
     for (int isec = 0; isec < DCConstants::nSect; isec++) {
-        c_DCHits->cd(isec + 1)->Clear();
-        h_DC_Segments_[isec]->Reset();
-//        h_DC_Segments_[isec]->GetYaxis()->UnZoom();
-//        h_DC_Segments_[isec]->GetXaxis()->UnZoom();
-        h_DC_Segments_[isec]->Draw();
+        c_DCHits[isec]->cd()->Clear();
+        //        c_DCHits[isec]->Range(DCConsts.xMin, DCConsts.yMin, DCConsts.xMax, DCConsts.yMax);
+        //        h_DC_Segments_[isec]->Reset();
+        //        h_DC_Segments_[isec]->Draw();
     }
+
     IsSingleEvent = true;
     ProcessDCSeg(fEvent);
-    c_DCHits->Modified();
-    c_DCHits->Update();
+
+    for (int isec = 0; isec < DCConstants::nSect; isec++) {
+        c_DCHits[isec]->Modified();
+        c_DCHits[isec]->Update();
+    }
+
 }
 
-void SegDisplay::ResetDoca(){
+void SegDisplay::MouseAction(Int_t ev, Int_t ix, Int_t iy, TObject* selected) {
+
+    if (strcmp("TCanvas", selected->ClassName()) != 0) {
+        return;
+    }
+
+    int iXMax = ((TCanvas*) selected)->GetWw();
+    int iYMax = ((TCanvas*) selected)->GetWw();
+
+
+    ((TCanvas*) selected)->cd();
+    double yNewMax;
+    double yNewMin;
+
+    double xNewMax;
+    double xNewMin;
+    
+    double delta_X, delta_Y;
+    
+    switch (ev) {
+
+        case kMouseEnter:
+            return;
+        case kButton1Down:
+
+            ixClick = ix;
+            iyClick = iy;
+            break;
+        case kButton1Motion:
+
+            //          cout << "Detected Mouse Motion      ix = " << ix << "    iy = " << iy << endl;
+            gVirtualX->DrawBox(ixClick, iyClick, TMath::Min(ix, iXMax), TMath::Min(iy, iYMax), TVirtualX::kHollow);
+            //gVirtualX->DrawLine(ixClick, iyClick, TMath::Min(ix, iXMax), TMath::Min(iy, iYMax));
+
+            break;
+        case kButton1Up:
+            cout << "Event is " << ev << endl;
+            //            cout<<"kButton1Up is detected"<<endl;
+            ixRelease = TMath::Max(ix, 0);
+            ixRelease = TMath::Min(ixRelease, iXMax);
+            iyRelease = TMath::Max(iy, 0);
+            iyRelease = TMath::Min(iyRelease, iYMax);
+
+            yNewMax = DCConsts.yMax - (DCConsts.yMax - DCConsts.yMin) * double(TMath::Min(iyClick, iyRelease)) / double(iYMax);
+            yNewMin = DCConsts.yMax - (DCConsts.yMax - DCConsts.yMin) * double(TMath::Max(iyClick, iyRelease)) / double(iYMax);
+
+            xNewMax = DCConsts.xMin + (DCConsts.xMax - DCConsts.xMin) * double(TMath::Max(ixClick, ixRelease)) / double(iXMax);
+            xNewMin = DCConsts.xMin + (DCConsts.xMax - DCConsts.xMin) * double(TMath::Min(ixClick, ixRelease)) / double(iXMax);
+
+            delta_Y = yNewMax - yNewMin;
+            delta_X = xNewMax - xNewMin;
+            
+            // We need to have a square zoom, that circles will appear as circles
+            
+            if( delta_X < delta_Y ){
+                if ( ixClick < iyRelease ){
+                    xNewMax = TMath::Min(DCConsts.xMax, xNewMin + delta_Y);
+                    xNewMin = xNewMax - delta_Y;
+                }else{
+                    xNewMin = TMath::Max(DCConsts.xMin, xNewMax - delta_Y);
+                    xNewMax = xNewMin + delta_Y;
+                }
+            }else {
+                if (iyClick < iyRelease) {
+                    yNewMin = TMath::Max(DCConsts.yMin, yNewMax - delta_X);
+                    yNewMax = yNewMin + delta_X;
+                } else {
+                    yNewMax = TMath::Min(DCConsts.yMax, yNewMin + delta_X);
+                    yNewMin = yNewMax - delta_X;
+                }
+            }
+            
+            
+            
+            ((TCanvas*) selected)->Range(xNewMin, yNewMin, xNewMax, yNewMax);
+            ((TCanvas*) selected)->Modified();
+            ((TCanvas*) selected)->Update();
+            break;
+        default:
+            return;
+
+
+    }
+
+}
+
+void SegDisplay::ResetDoca() {
     // Read the parameters from the file and assign o tMin, tMax and dMax
     ReadDocaPars();
     // Update the viewer
     UpdateEvent();
 }
 
-SegDisplay::SegDisplay(const SegDisplay& orig) {
+SegDisplay::SegDisplay(const SegDisplay & orig) {
 }
 
 SegDisplay::~SegDisplay() {

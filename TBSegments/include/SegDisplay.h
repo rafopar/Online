@@ -40,8 +40,8 @@ private:
     void InitSettings(); // Init some settings
     bool InitFile(std::string);
     void ReadDocaPars();
-    
-    
+
+
     double CalcDocaError(double); // Calculates the DOCA error. According to the DC recon code // referred there as Mac's formula
 
     std::string onlineDir;
@@ -72,7 +72,7 @@ private:
      */
 
     const TGWindow *p_wind;
-    TRootEmbeddedCanvas *fEC_DCHits;
+    TRootEmbeddedCanvas *fEC_DCHits[nSec];
     TRootEmbeddedCanvas *fEC_Chi2Seg;
 
     /**
@@ -126,11 +126,14 @@ private:
 
     TLine lineRawFit;
     TArc circRawDoca;
-    TCanvas *c_DCHits;
+    TCanvas *c_DCHits[nSec];
     TCanvas *c_Chi2Seg;
-    TPad *p_c_DCHits_[nSec]; // one pad for each sector
 
     TH2F *h_DC_Segments_[nSec];
+
+    int ixClick, iyClick, ixRelease, iyRelease; // Coordinates of mouse click and release
+    double x0, y0, x1, y1; // Final coordinates in units of histogram axis
+    
 
     /**
      * Histograms
@@ -167,10 +170,10 @@ public:
     bool RunEvents(int nev); // Run nev events. Returns true, if file is still readable, and false otherwise, e.g. end of file is reached, or even file is not opened yet
     void OpenInpFile(); // creates a file dialog, to open the file
     void popupMSG(std::string);
-    void MouseZoom(int, int, int, TObject *);
     void DoTab(Int_t);
     void UpdateEvent(); // Intended to be used, when some parameter is changed, Using this it will display segments with updated pars
-    void ResetDoca();   // Will reset DOCA parameters to initial values, and update the viewer
+    void ResetDoca(); // Will reset DOCA parameters to initial values, and update the viewer    
+    void MouseAction(Int_t, Int_t, Int_t, TObject *);
 };
 
 #endif /* SEGDISPLAY_H */

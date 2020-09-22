@@ -25,6 +25,10 @@ public:
     static const int nLayerperSL = 6;
     static const int nLayerperSec = nSL*nLayerperSL;
     static const int nWirePerLayer = 112;
+    static const double yMax;
+    static const double yMin;
+    static const double xMax;
+    static const double xMin;
 
     static double w_midpoint_x[nLayerperSec][nWirePerLayer];
     static double w_midpoint_y[nLayerperSec][nWirePerLayer];
