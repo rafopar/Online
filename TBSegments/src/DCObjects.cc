@@ -17,10 +17,10 @@ DCConstants::DCConstants() {
 double DCConstants::w_midpoint_y[nLayerperSec][nWirePerLayer] = {0};
 double DCConstants::w_midpoint_x[nLayerperSec][nWirePerLayer] = {0};
 
-const double DCConstants::yMax = 550;
-const double DCConstants::yMin = 220;
-const double DCConstants::xMax = 220;
-const double DCConstants::xMin = -200;
+const double DCConstants::yMax = 600.;
+const double DCConstants::yMin = 180.;
+const double DCConstants::xMax = 220.;
+const double DCConstants::xMin = -200.;
 
 void DCConstants::Init() {
 
