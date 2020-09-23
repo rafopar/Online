@@ -161,6 +161,7 @@ void SegDisplay::InitSettings() {
     lineRawFit.SetLineColor(2);
     circRawDoca = TArc();
     circRawDoca.SetLineColor(4);
+    circRawDoca.SetFillColor(0);
 
     for (int i = 0; i < 6; i++) {
         c_DCHits[i] = fEC_DCHits[i]->GetCanvas();
