@@ -48,13 +48,17 @@ private:
     std::string docaParFilename;
 
     // ====== Processors =========
-    bool ProcessDCSeg(hipo::event &); // DC SegFinderProcessor
+    bool ProcessRawDCSeg(hipo::event &); // DC SegFinderProcessor
+    bool ProcessHBHits(hipo::event &); // Processing hit based DC hits
+    bool ProcessTBHits(hipo::event &); // Processing time based DC hits
 
     hipo::reader fReader; // The Hipo Reader
     std::string fInpFileName; // Name of the input hipo file
     hipo::event fEvent; // Hipo event
     hipo::dictionary fFactory; // Hipo factory
     hipo::bank fBDCtdc; // Bank DC::tdc
+    hipo::bank fBHBHits; // Bank HitBasedTrkg::HBHits
+    hipo::bank fBTBHits; // Bank TimeBasedTrkg::TBHits
 
 
 
@@ -109,6 +113,7 @@ private:
 
     TGGroupFrame *fG_RunControls;
     TGGroupFrame *fG_docaControls;
+    TGGroupFrame *fG_DisplayControls;
 
 
     /**
@@ -126,6 +131,9 @@ private:
 
     TLine lineRawFit;
     TArc circRawDoca;
+    TArc circHBTrkDoca;
+    TArc circTBDoca;
+    TArc circTBTrkDoca;
     TCanvas *c_DCHits[nSec];
     TCanvas *c_Chi2Seg;
 
@@ -133,7 +141,6 @@ private:
 
     int ixClick, iyClick, ixRelease, iyRelease; // Coordinates of mouse click and release
     double x0, y0, x1, y1; // Final coordinates in units of histogram axis
-    
 
     /**
      * Histograms
@@ -172,7 +179,8 @@ public:
     void popupMSG(std::string);
     void DoTab(Int_t);
     void UpdateEvent(); // Intended to be used, when some parameter is changed, Using this it will display segments with updated pars
-    void ResetDoca(); // Will reset DOCA parameters to initial values, and update the viewer    
+    void ResetDoca(); // Will reset DOCA parameters to initial values, and update the viewer
+    void UnzoomAll(); // Will Unzoom views on all screens
     void MouseAction(Int_t, Int_t, Int_t, TObject *);
 };
 
