@@ -36,6 +36,7 @@ private:
 
     static const int nSec = 6;
     static const int nSL = 6; // The number of SuperLayers
+    static const double tiltAngle;
 
     void InitSettings(); // Init some settings
     bool InitFile(std::string);
@@ -51,6 +52,7 @@ private:
     bool ProcessRawDCSeg(hipo::event &); // DC SegFinderProcessor
     bool ProcessHBHits(hipo::event &); // Processing hit based DC hits
     bool ProcessTBHits(hipo::event &); // Processing time based DC hits
+    bool ProcessTBSegs(hipo::event &); // Processing time based DC Segments
 
     hipo::reader fReader; // The Hipo Reader
     std::string fInpFileName; // Name of the input hipo file
@@ -59,6 +61,7 @@ private:
     hipo::bank fBDCtdc; // Bank DC::tdc
     hipo::bank fBHBHits; // Bank HitBasedTrkg::HBHits
     hipo::bank fBTBHits; // Bank TimeBasedTrkg::TBHits
+    hipo::bank fBTBSegs; // Bank TimeBasedTrkg::TBSegments
 
 
 
@@ -95,6 +98,13 @@ private:
     TGTextButton *but_Exit;
     TGTextButton *but_Open;
 
+    TGCheckButton *but_rawHits;
+    TGCheckButton *but_rawSegs;
+    TGCheckButton *but_HBHits;
+    TGCheckButton *but_TBHits;
+    TGCheckButton *but_TBHitsFit;
+    TGCheckButton *but_TBSegs;
+    
     /**
      * GUI NumberEntries
      */
@@ -130,6 +140,7 @@ private:
      */
 
     TLine lineRawFit;
+    TLine lineTBSeg;
     TArc circRawDoca;
     TArc circHBTrkDoca;
     TArc circTBDoca;

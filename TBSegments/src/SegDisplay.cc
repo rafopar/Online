@@ -22,6 +22,8 @@
 
 using namespace std;
 
+const double SegDisplay::tiltAngle = 25 * TMath::DegToRad();
+
 SegDisplay::SegDisplay(const TGWindow *p, UInt_t w, UInt_t h) {
 
     p_wind = p;
@@ -92,6 +94,30 @@ SegDisplay::SegDisplay(const TGWindow *p, UInt_t w, UInt_t h) {
     fG_DisplayControls->AddFrame(fBut_Unzoom, new TGLayoutHints(kLHintsTop, 1, 1, 1, 1));
 
 
+    but_rawHits = new TGCheckButton(fG_DisplayControls, "Raw Hits");
+    but_rawHits->Connect("Clicked()", "SegDisplay", this, "UpdateEvent()");
+    but_rawHits->SetOn(kTRUE);
+    fG_DisplayControls->AddFrame(but_rawHits, new TGLayoutHints(kLHintsLeft, 1, 1, 1, 1));
+    but_rawSegs = new TGCheckButton(fG_DisplayControls, "Raw Segments");
+    but_rawSegs->Connect("Clicked()", "SegDisplay", this, "UpdateEvent()");
+    but_rawSegs->SetOn(kTRUE);
+    fG_DisplayControls->AddFrame(but_rawSegs, new TGLayoutHints(kLHintsLeft, 1, 1, 1, 1));
+    but_HBHits = new TGCheckButton(fG_DisplayControls, "HB Hits");
+    but_HBHits->Connect("Clicked()", "SegDisplay", this, "UpdateEvent()");
+    but_HBHits->SetOn(kTRUE);
+    fG_DisplayControls->AddFrame(but_HBHits, new TGLayoutHints(kLHintsLeft, 1, 1, 1, 1));
+    but_TBHits = new TGCheckButton(fG_DisplayControls, "TB Hits");
+    but_TBHits->Connect("Clicked()", "SegDisplay", this, "UpdateEvent()");
+    but_TBHits->SetOn(kTRUE);
+    fG_DisplayControls->AddFrame(but_TBHits, new TGLayoutHints(kLHintsLeft, 1, 1, 1, 1));
+    but_TBHitsFit = new TGCheckButton(fG_DisplayControls, "TB Hits Fit");
+    but_TBHitsFit->Connect("Clicked()", "SegDisplay", this, "UpdateEvent()");
+    but_TBHitsFit->SetOn(kTRUE);
+    fG_DisplayControls->AddFrame(but_TBHitsFit, new TGLayoutHints(kLHintsLeft, 1, 1, 1, 1));
+    but_TBSegs = new TGCheckButton(fG_DisplayControls, "TB Segments");
+    but_TBSegs->Connect("Clicked()", "SegDisplay", this, "UpdateEvent()");
+    but_TBSegs->SetOn(kTRUE);
+    fG_DisplayControls->AddFrame(but_TBSegs, new TGLayoutHints(kLHintsLeft, 1, 1, 1, 1));
 
 
     /**
@@ -106,7 +132,7 @@ SegDisplay::SegDisplay(const TGWindow *p, UInt_t w, UInt_t h) {
      * Tabs
      */
 
-    fTab = new TGTab(fMain, 1000, 100);
+    fTab = new TGTab(fMain, 1500, 100);
     fTab->Connect("Selected(Int_t)", "SegDisplay", this, "DoTab(Int_t)");
 
     TGCompositeFrame *tf_DCHits = (TGCompositeFrame*) fTab->AddTab("Segments");
@@ -114,7 +140,7 @@ SegDisplay::SegDisplay(const TGWindow *p, UInt_t w, UInt_t h) {
     // A Horizontal frame that will contain canvases for secors 1, 2 and 3
     TGHorizontalFrame *fr_DCHitsSec_123 = new TGHorizontalFrame(tf_DCHits, 30, 10);
     for (int i = 0; i < 3; i++) {
-        fEC_DCHits[i] = new TRootEmbeddedCanvas(Form("fEC_DCHits_%d", i), fr_DCHitsSec_123, 340, 340);
+        fEC_DCHits[i] = new TRootEmbeddedCanvas(Form("fEC_DCHits_%d", i), fr_DCHitsSec_123, 380, 380);
 
         fr_DCHitsSec_123->AddFrame(fEC_DCHits[i], new TGLayoutHints(kLHintsCenterX, 2, 2, 2, 2));
     }
@@ -123,7 +149,7 @@ SegDisplay::SegDisplay(const TGWindow *p, UInt_t w, UInt_t h) {
     // A Horizontal frame that will contain canvases for secors 1, 2 and 3
     TGHorizontalFrame *fr_DCHitsSec_456 = new TGHorizontalFrame(tf_DCHits, 30, 10);
     for (int i = 3; i < 6; i++) {
-        fEC_DCHits[i] = new TRootEmbeddedCanvas(Form("fEC_DCHits_%d", i), fr_DCHitsSec_456, 340, 340);
+        fEC_DCHits[i] = new TRootEmbeddedCanvas(Form("fEC_DCHits_%d", i), fr_DCHitsSec_456, 380, 380);
         fr_DCHitsSec_456->AddFrame(fEC_DCHits[i], new TGLayoutHints(kLHintsCenterX, 2, 2, 2, 2));
     }
     tf_DCHits->AddFrame(fr_DCHitsSec_456, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY, 2, 2, 2, 2));
@@ -163,7 +189,10 @@ void SegDisplay::InitSettings() {
     IsFileOpened = false;
     IsSingleEvent = false;
     lineRawFit = TLine();
-    lineRawFit.SetLineColor(2);
+    lineRawFit.SetLineColor(1);
+
+    lineTBSeg = TLine();
+    lineTBSeg.SetLineColor(4);
 
     circRawDoca = TArc();
     circRawDoca.SetLineColor(1);
@@ -172,9 +201,9 @@ void SegDisplay::InitSettings() {
     circHBTrkDoca = TArc();
     circHBTrkDoca.SetLineColor(2);
     circHBTrkDoca.SetFillStyle(0);
-    
+
     circTBDoca = TArc();
-    circTBDoca.SetLineColor(3);
+    circTBDoca.SetLineColor(6);
     circTBDoca.SetFillStyle(0);
 
     circTBTrkDoca = TArc();
@@ -269,11 +298,25 @@ bool SegDisplay::RunEvents(int nev) {
 
         if (fReader.next() == true) {
 
+            cout << "Going to the next event" << endl;
+
             fReader.read(fEvent);
 
-            ProcessRawDCSeg(fEvent);
-            ProcessHBHits(fEvent);
-            ProcessTBHits(fEvent);
+            if (but_rawHits->IsOn() || but_rawSegs->IsOn()) {
+                ProcessRawDCSeg(fEvent);
+            }
+
+            if (but_HBHits->IsOn()) {
+                ProcessHBHits(fEvent);
+            }
+
+            if (but_TBHits->IsOn() || but_TBHitsFit->IsOn()) {
+                ProcessTBHits(fEvent);
+            }
+
+            if (but_TBSegs->IsOn()) {
+                ProcessTBSegs(fEvent);
+            }
 
         } else {
             return false;
@@ -363,6 +406,7 @@ bool SegDisplay::InitFile(std::string fname) {
     fBDCtdc = hipo::bank(fFactory.getSchema("DC::tdc"));
     fBHBHits = hipo::bank(fFactory.getSchema("HitBasedTrkg::HBHits"));
     fBTBHits = hipo::bank(fFactory.getSchema("TimeBasedTrkg::TBHits"));
+    fBTBSegs = hipo::bank(fFactory.getSchema("TimeBasedTrkg::TBSegments"));
     IsFileOpened = true;
     return IsFileOpened;
 }
@@ -374,13 +418,26 @@ bool SegDisplay::ProcessRawDCSeg(hipo::event &event) {
 
     std::set<DCHit> hitSet[DCConstants::nSect][DCConstants::nLayerperSec];
 
+
     for (int ihit = 0; ihit < nDCHits; ihit++) {
         int sec = fBDCtdc.getInt("sector", ihit) - 1;
 
         int layer = fBDCtdc.getInt("layer", ihit) - 1;
         int SL = layer / DCConstants::nLayerperSL;
-        int w = fBDCtdc.getInt("component", ihit) - 1;
+        int w = fBDCtdc.getInt("component", ihit) - 2;
+        //int w = fBDCtdc.getInt("component", ihit) - 1;
         int tdc = fBDCtdc.getInt("TDC", ihit);
+
+
+        /**
+         * Needs to be fixed/understood!!
+         */
+        w = TMath::Max(w, 0);
+
+        if (w < 0) {
+            cout << "***************** Oho  wire number is negative  " << w << endl;
+            cin.ignore();
+        }
 
         double w_Xmid = DCConsts.w_midpoint_x[layer][w];
         double w_Ymid = DCConsts.w_midpoint_y[layer][w];
@@ -392,7 +449,10 @@ bool SegDisplay::ProcessRawDCSeg(hipo::event &event) {
 
         if (IsSingleEvent) {
             c_DCHits[sec]->cd();
-            circRawDoca.DrawArc(w_Xmid, w_Ymid, r);
+
+            if (but_rawHits->IsOn()) {
+                circRawDoca.DrawArc(w_Xmid, w_Ymid, r);
+            }
         }
 
         hitSet[sec][layer].insert(DCHit(sec, layer, w, w_Xmid, w_Ymid, r, err_r));
@@ -423,7 +483,9 @@ bool SegDisplay::ProcessRawDCSeg(hipo::event &event) {
                     /*if (chi2 > 500000)*/
                     {
                         c_DCHits[isec]->cd();
-                        lineRawFit.DrawLine(x_0, slope * x_0 + offset, x_max, slope * x_max + offset);
+                        if (but_rawSegs->IsOn()) {
+                            lineRawFit.DrawLine(x_0, slope * x_0 + offset, x_max, slope * x_max + offset);
+                        }
                     }
                 } else {
                     h_Chi2_SegFit_[isec]->Fill(chi2);
@@ -449,7 +511,7 @@ bool SegDisplay::ProcessHBHits(hipo::event&) {
             int sec = fBHBHits.getInt("sector", ihit) - 1;
             int SL = fBHBHits.getInt("superlayer", ihit) - 1;
             int layer = DCConsts.nLayerperSL * SL + fBHBHits.getInt("layer", ihit) - 1;
-            int w = fBHBHits.getInt("wire", ihit) - 1;
+            int w = fBHBHits.getInt("wire", ihit) - 2;
             int tdc = fBHBHits.getInt("TDC", ihit);
             double doca = double(fBHBHits.getFloat("trkDoca", ihit));
 
@@ -472,14 +534,14 @@ bool SegDisplay::ProcessTBHits(hipo::event&) {
     fEvent.getStructure(fBTBHits);
 
     int nHits = fBTBHits.getRows();
-    
+
     if (IsSingleEvent) {
         for (int ihit = 0; ihit < nHits; ihit++) {
-            
+
             int sec = fBTBHits.getInt("sector", ihit) - 1;
             int SL = fBTBHits.getInt("superlayer", ihit) - 1;
             int layer = DCConsts.nLayerperSL * SL + fBTBHits.getInt("layer", ihit) - 1;
-            int w = fBTBHits.getInt("wire", ihit) - 1;
+            int w = fBTBHits.getInt("wire", ihit) - 2;
             int tdc = fBTBHits.getInt("TDC", ihit);
             double trkdoca = double(fBTBHits.getFloat("trkDoca", ihit));
             double doca = double(fBTBHits.getFloat("doca", ihit));
@@ -492,8 +554,39 @@ bool SegDisplay::ProcessTBHits(hipo::event&) {
             double w_Ymid = DCConsts.w_midpoint_y[layer][w];
 
             c_DCHits[sec]->cd();
-            circTBTrkDoca.DrawArc(w_Xmid, w_Ymid, trkdoca);
-            circTBDoca.DrawArc(w_Xmid, w_Ymid, doca);
+            if (but_TBHits->IsOn()) {
+                circTBDoca.DrawArc(w_Xmid, w_Ymid, doca);
+            }
+            if (but_TBHitsFit->IsOn()) {
+                circTBTrkDoca.DrawArc(w_Xmid, w_Ymid, trkdoca);
+            }
+        }
+
+    }
+}
+
+bool SegDisplay::ProcessTBSegs(hipo::event&) {
+    fEvent.getStructure(fBTBSegs);
+
+    int nSegs = fBTBSegs.getRows();
+
+    if (IsSingleEvent) {
+
+        for (int iseg = 0; iseg < nSegs; iseg++) {
+
+            int sec = fBTBSegs.getInt("sector", iseg) - 1;
+            double x1 = double(fBTBSegs.getFloat("SegEndPoint1X", iseg));
+            double x2 = double(fBTBSegs.getFloat("SegEndPoint2X", iseg));
+            double z1 = double(fBTBSegs.getFloat("SegEndPoint1Z", iseg));
+            double z2 = double(fBTBSegs.getFloat("SegEndPoint2Z", iseg));
+
+            double x1Rot = x1 * cos(tiltAngle) - z1 * sin(tiltAngle);
+            double z1Rot = x1 * sin(tiltAngle) + z1 * cos(tiltAngle);
+            double x2Rot = x2 * cos(tiltAngle) - z2 * sin(tiltAngle);
+            double z2Rot = x2 * sin(tiltAngle) + z2 * cos(tiltAngle);
+
+            c_DCHits[sec]->cd();
+            lineTBSeg.DrawLine(x1Rot, z1Rot, x2Rot, z2Rot);
         }
 
     }
@@ -538,9 +631,21 @@ void SegDisplay::UpdateEvent() {
     }
 
     IsSingleEvent = true;
-    ProcessRawDCSeg(fEvent);
-    ProcessHBHits(fEvent);
-    ProcessTBHits(fEvent);
+
+    if (but_rawHits->IsOn() || but_rawSegs->IsOn()) {
+        ProcessRawDCSeg(fEvent);
+    }
+
+    if (but_HBHits->IsOn()) {
+        ProcessHBHits(fEvent);
+    }
+    if (but_TBHits->IsOn() || but_TBHitsFit->IsOn()) {
+        ProcessTBHits(fEvent);
+    }
+
+    if (but_TBSegs->IsOn()) {
+        ProcessTBSegs(fEvent);
+    }
 
     for (int isec = 0; isec < DCConstants::nSect; isec++) {
         c_DCHits[isec]->Modified();
@@ -557,7 +662,7 @@ void SegDisplay::MouseAction(Int_t ev, Int_t ix, Int_t iy, TObject* selected) {
 
     int iXMax = ((TCanvas*) selected)->GetWw();
     int iYMax = ((TCanvas*) selected)->GetWw();
-    
+
     ((TCanvas*) selected)->cd();
     double yNewMax, yOldMax;
     double yNewMin, yOldMin;
@@ -592,18 +697,18 @@ void SegDisplay::MouseAction(Int_t ev, Int_t ix, Int_t iy, TObject* selected) {
             ixRelease = TMath::Min(ixRelease, iXMax);
             iyRelease = TMath::Max(iy, 0);
             iyRelease = TMath::Min(iyRelease, iYMax);
-            
+
 
             yNewMax = yOldMax - (yOldMax - yOldMin) * double(TMath::Min(iyClick, iyRelease)) / double(iYMax);
             yNewMin = yOldMax - (yOldMax - yOldMin) * double(TMath::Max(iyClick, iyRelease)) / double(iYMax);
 
             xNewMax = xOldMin + (xOldMax - xOldMin) * double(TMath::Max(ixClick, ixRelease)) / double(iXMax);
             xNewMin = xOldMin + (xOldMax - xOldMin) * double(TMath::Min(ixClick, ixRelease)) / double(iXMax);
-//            yNewMax = DCConsts.yMax - (DCConsts.yMax - DCConsts.yMin) * double(TMath::Min(iyClick, iyRelease)) / double(iYMax);
-//            yNewMin = DCConsts.yMax - (DCConsts.yMax - DCConsts.yMin) * double(TMath::Max(iyClick, iyRelease)) / double(iYMax);
-//
-//            xNewMax = DCConsts.xMin + (DCConsts.xMax - DCConsts.xMin) * double(TMath::Max(ixClick, ixRelease)) / double(iXMax);
-//            xNewMin = DCConsts.xMin + (DCConsts.xMax - DCConsts.xMin) * double(TMath::Min(ixClick, ixRelease)) / double(iXMax);
+            //            yNewMax = DCConsts.yMax - (DCConsts.yMax - DCConsts.yMin) * double(TMath::Min(iyClick, iyRelease)) / double(iYMax);
+            //            yNewMin = DCConsts.yMax - (DCConsts.yMax - DCConsts.yMin) * double(TMath::Max(iyClick, iyRelease)) / double(iYMax);
+            //
+            //            xNewMax = DCConsts.xMin + (DCConsts.xMax - DCConsts.xMin) * double(TMath::Max(ixClick, ixRelease)) / double(iXMax);
+            //            xNewMin = DCConsts.xMin + (DCConsts.xMax - DCConsts.xMin) * double(TMath::Min(ixClick, ixRelease)) / double(iXMax);
 
             delta_Y = yNewMax - yNewMin;
             delta_X = xNewMax - xNewMin;
@@ -629,14 +734,14 @@ void SegDisplay::MouseAction(Int_t ev, Int_t ix, Int_t iy, TObject* selected) {
             }
 
 
-            
+
             ((TCanvas*) selected)->Range(xNewMin, yNewMin, xNewMax, yNewMax);
             ((TCanvas*) selected)->Modified();
             ((TCanvas*) selected)->Update();
             break;
         default:
-            return;
 
+            break;
 
     }
 
@@ -649,12 +754,12 @@ void SegDisplay::ResetDoca() {
     UpdateEvent();
 }
 
-void SegDisplay::UnzoomAll(){
+void SegDisplay::UnzoomAll() {
 
-    for( int isec = 0; isec < nSec; isec++ ){
+    for (int isec = 0; isec < nSec; isec++) {
         c_DCHits[isec]->Range(DCConsts.xMin, DCConsts.yMin, DCConsts.xMax, DCConsts.yMax);
     }
-    
+
     // Update the viewer
     UpdateEvent();
 }

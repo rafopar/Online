@@ -25,9 +25,9 @@ const double DCConstants::xMin = -200.;
 void DCConstants::Init() {
 
 
-//    const double DCConstants::DMax[nSL] = {0.78, 0.81, 1.14, 1.32, 1.87, 1.96};
-//    tMin = {125., 123., 120., 120., 120., 140.};
-//    tMax = {295., 293., 620., 620., 800., 850.};
+    //    const double DCConstants::DMax[nSL] = {0.78, 0.81, 1.14, 1.32, 1.87, 1.96};
+    //    tMin = {125., 123., 120., 120., 120., 140.};
+    //    tMax = {295., 293., 620., 620., 800., 850.};
 
     wireMidpointFileName = "TBSegments/DataFiles/wires_midpoint.txt";
     onlineDir = std::getenv("ONLINE_DIR");
@@ -74,14 +74,14 @@ void DCConstants::Init() {
         cout << "**  The file successfully opened" << endl;
         cout << endl;
 
-        while( !inpDocaPars.eof() ){
+        while (!inpDocaPars.eof()) {
             int SL;
             inpDocaPars >> SL;
             inpDocaPars >> tMin[SL];
             inpDocaPars >> tMax[SL];
-            inpDocaPars >> DMax[SL];            
+            inpDocaPars >> DMax[SL];
         }
-        
+
     } else {
         cout << "Can not open the file " << fnamewireMidpoints << endl;
         cout << "exiting" << endl;
@@ -150,8 +150,12 @@ void SegFinder::FindSegmentCandidates() {
         std::set<DCHit> *localhits = &hits[nlayerPerSL * SL];
 
         //for (DCHit curhit : localhits[0]) {
-        for (std::set<DCHit>::iterator it = localhits[0].begin(); it != localhits[0].end(); it++) {
 
+        for (std::set<DCHit>::iterator it = localhits[0].begin(); it != localhits[0].end(); it++) {
+            cout << "Kuku1" << endl;
+
+            cout<<"Iterator index is "<<std::distance(localhits[0].begin(), it)<<endl;
+            
             DCHit curHit = *it;
 
             int iw = curHit.wireNo;
@@ -160,6 +164,9 @@ void SegFinder::FindSegmentCandidates() {
             v_segm.push_back(curHit);
             int curminwireNo = iw;
             int curmaxwireNo = iw;
+            
+            cout<<"curHit.wireNo is "<<curHit.wireNo<<endl;
+            
             if (localhits[0].find(DCHit(0, 0., curHit.wireNo + 1, 0., 0., 0., 0.)) != localhits[0].end()) {
 
                 curmaxwireNo = curHit.wireNo + 1;
@@ -172,6 +179,7 @@ void SegFinder::FindSegmentCandidates() {
              * So current algorithm will keep only segment candidates which have a hit in the 1st later of each SL
              * Later this should be changed of course.
              */
+            cout << "Kuku2" << endl;
 
             int nLayer = 1; // This variable shows the number of layers of the segment
             for (int ilayer = 1; ilayer < nlayerPerSL; ilayer++) {
@@ -284,10 +292,10 @@ vector<DCHit> SegFitter::GetRotatedHits(const vector<DCHit> inpHits, double alph
 
 }
 
-double SegFitter::CalcDocaError(double x){
+double SegFitter::CalcDocaError(double x) {
     // x is doca/d_Max
-    
-   return 0.06 - 0.14 * TMath::Power(x,1.5) + 0.18 * TMath::Power(x,2.5);
+
+    return 0.06 - 0.14 * TMath::Power(x, 1.5) + 0.18 * TMath::Power(x, 2.5);
 }
 
 double SegFitter::FitCircles(const vector<DCHit> v_inp, double &chi2) {
