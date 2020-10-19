@@ -162,7 +162,9 @@ SegDisplay::SegDisplay(const TGWindow *p, UInt_t w, UInt_t h) {
     fEC_Chi2Seg = new TRootEmbeddedCanvas("fEC_Chi2Seg", tf_FitQual, 1050, 700);
     tf_FitQual->AddFrame(fEC_Chi2Seg, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY, 2, 2, 2, 2));
 
-
+    TGCompositeFrame *tf_TBHits = (TGCompositeFrame*) fTab->AddTab("TB Hits");
+    fEC_TB_Hit_t0 = new TRootEmbeddedCanvas("fEC_TB_Hit_t0", tf_TBHits, 1050, 700);
+    tf_TBHits->AddFrame(fEC_TB_Hit_t0, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY, 2, 2, 2, 2));
 
     fMain->AddFrame(vframe, new TGLayoutHints(kLHintsLeft, 2, 2, 2, 2));
     fMain->AddFrame(fTab, new TGLayoutHints(kLHintsRight, 2, 2, 2, 2));
@@ -226,6 +228,9 @@ void SegDisplay::InitSettings() {
     c_Chi2Seg = fEC_Chi2Seg->GetCanvas();
     c_Chi2Seg->Divide(3, 2);
 
+    c_TBT0 = fEC_TB_Hit_t0->GetCanvas();
+    c_TBT0->Divide(3, 2);
+
     cout << "**** InitSettings Kuku2" << endl;
 
     /**
@@ -241,6 +246,11 @@ void SegDisplay::InitSettings() {
 
         c_Chi2Seg->cd(isec + 1)->SetLogx();
         h_Chi2_SegFit_[isec] = new TH1D(Form("h_Chi2_SegFit_%d", isec), "", nChi2Bins, chi2Bins);
+
+        for (int iSL = 0; iSL < nSL; iSL++) {
+            h_TBT0_[isec][iSL] = new TH1D(Form("h_TBT0_%d_%d", isec, iSL), "", 200, 50., 210.);
+            h_TBT0_[isec][iSL]->SetLineColor(iSL + 1);
+        }
     }
     cout << "**** InitSettings Kuku3" << endl;
 
@@ -298,7 +308,7 @@ bool SegDisplay::RunEvents(int nev) {
 
         if (fReader.next() == true) {
 
-            cout << "Going to the next event" << endl;
+            //cout << "Going to the next event" << endl;
 
             fReader.read(fEvent);
 
@@ -371,6 +381,10 @@ void SegDisplay::AnalyzeNEvents() {
 
     for (int isec = 0; isec < DCConstants::nSect; isec++) {
         h_Chi2_SegFit_[isec]->Reset();
+
+        for (int iSL = 0; iSL < nSL; iSL++) {
+            h_TBT0_[isec][iSL]->Reset();
+        }
     }
 
     RunEvents(fNev);
@@ -379,9 +393,20 @@ void SegDisplay::AnalyzeNEvents() {
         c_Chi2Seg->cd(isec + 1);
         ConvertDifferential(h_Chi2_SegFit_[isec]);
         h_Chi2_SegFit_[isec]->Draw();
+
+        double maxVal = 0;
+        c_TBT0->cd(isec + 1);
+        h_TBT0_[isec][0]->Draw();
+        for (int iSL = 1; iSL < nSL; iSL++) {
+            h_TBT0_[isec][iSL]->Draw("Same");
+            maxVal = TMath::Max(maxVal, h_TBT0_[isec][iSL]->GetMaximum());
+        }
+        h_TBT0_[isec][0]->SetMaximum(1.05*maxVal);
     }
     c_Chi2Seg->Modified();
     c_Chi2Seg->Update();
+    c_TBT0->Modified();
+    c_TBT0->Update();
 }
 
 void SegDisplay::OpenInpFile() {
@@ -442,7 +467,10 @@ bool SegDisplay::ProcessRawDCSeg(hipo::event &event) {
         double w_Xmid = DCConsts.w_midpoint_x[layer][w];
         double w_Ymid = DCConsts.w_midpoint_y[layer][w];
 
-        double r = TMath::Max((tdc - tMin[SL]), float(0.)) * DMax[SL] / tMax[SL];
+
+        // The "900 - 575*Iwir/112" is Mac's formula for SL2 and SL3 (counting from 0)
+        double r = (SL == 2 || SL == 3) ? TMath::Min(DMax[SL], TMath::Max((tdc - tMin[SL]), float(0.)) * DMax[SL] / (tMax[SL] - 575. * (w + 1.) / double(DCConstants::nWirePerLayer) - tMin[SL])) :
+                TMath::Min(DMax[SL], TMath::Max((tdc - tMin[SL]), float(0.)) * DMax[SL] / (tMax[SL] - tMin[SL]));
         double x = TMath::Min(float(r), float(DMax[SL])) / DMax[SL];
         double err_r = CalcDocaError(x) * DMax[SL];
         //double err_r = 0.15 * r;
@@ -496,7 +524,7 @@ bool SegDisplay::ProcessRawDCSeg(hipo::event &event) {
 
     }
 
-
+    return true;
 }
 
 bool SegDisplay::ProcessHBHits(hipo::event&) {
@@ -527,7 +555,7 @@ bool SegDisplay::ProcessHBHits(hipo::event&) {
         }
 
     }
-
+    return true;
 }
 
 bool SegDisplay::ProcessTBHits(hipo::event&) {
@@ -535,24 +563,32 @@ bool SegDisplay::ProcessTBHits(hipo::event&) {
 
     int nHits = fBTBHits.getRows();
 
-    if (IsSingleEvent) {
-        for (int ihit = 0; ihit < nHits; ihit++) {
+    for (int ihit = 0; ihit < nHits; ihit++) {
 
-            int sec = fBTBHits.getInt("sector", ihit) - 1;
-            int SL = fBTBHits.getInt("superlayer", ihit) - 1;
-            int layer = DCConsts.nLayerperSL * SL + fBTBHits.getInt("layer", ihit) - 1;
-            int w = fBTBHits.getInt("wire", ihit) - 2;
-            int tdc = fBTBHits.getInt("TDC", ihit);
-            double trkdoca = double(fBTBHits.getFloat("trkDoca", ihit));
-            double doca = double(fBTBHits.getFloat("doca", ihit));
+        int sec = fBTBHits.getInt("sector", ihit) - 1;
+        int SL = fBTBHits.getInt("superlayer", ihit) - 1;
+        int layer = DCConsts.nLayerperSL * SL + fBTBHits.getInt("layer", ihit) - 1;
+        int w = fBTBHits.getInt("wire", ihit) - 2;
+        int tdc = fBTBHits.getInt("TDC", ihit);
+        double trkdoca = double(fBTBHits.getFloat("trkDoca", ihit));
+        double doca = double(fBTBHits.getFloat("doca", ihit));
 
-            if (doca < 0) {
-                continue;
-            }
+        double tb_TStart = double( fBTBHits.getFloat("TStart", ihit));
+        double tb_T0 = double( fBTBHits.getFloat("T0", ihit));
+        double tb_TFlight = double( fBTBHits.getFloat("TFlight", ihit));
+        double tb_TProp = double( fBTBHits.getFloat("TProp", ihit));
+        double tb_TBeta = double( fBTBHits.getFloat("tBeta", ihit));
 
-            double w_Xmid = DCConsts.w_midpoint_x[layer][w];
-            double w_Ymid = DCConsts.w_midpoint_y[layer][w];
+        double t0_tBHit = tb_TStart + tb_T0 + tb_TFlight + tb_TProp + tb_TBeta;
 
+        if (doca < 0) {
+            continue;
+        }
+
+        double w_Xmid = DCConsts.w_midpoint_x[layer][w];
+        double w_Ymid = DCConsts.w_midpoint_y[layer][w];
+
+        if (IsSingleEvent) {
             c_DCHits[sec]->cd();
             if (but_TBHits->IsOn()) {
                 circTBDoca.DrawArc(w_Xmid, w_Ymid, doca);
@@ -560,9 +596,13 @@ bool SegDisplay::ProcessTBHits(hipo::event&) {
             if (but_TBHitsFit->IsOn()) {
                 circTBTrkDoca.DrawArc(w_Xmid, w_Ymid, trkdoca);
             }
+        } else {
+            h_TBT0_[sec][SL]->Fill(t0_tBHit);
         }
-
     }
+
+
+    return true;
 }
 
 bool SegDisplay::ProcessTBSegs(hipo::event&) {
@@ -590,6 +630,7 @@ bool SegDisplay::ProcessTBSegs(hipo::event&) {
         }
 
     }
+    return true;
 }
 
 double SegDisplay::CalcDocaError(double x) {

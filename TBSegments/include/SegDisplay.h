@@ -74,6 +74,7 @@ private:
     bool IsFileOpened;
     bool IsSingleEvent;
 
+        
     /**
      * *************  GUI Objects, frames, buttons etc
      */
@@ -81,6 +82,7 @@ private:
     const TGWindow *p_wind;
     TRootEmbeddedCanvas *fEC_DCHits[nSec];
     TRootEmbeddedCanvas *fEC_Chi2Seg;
+    TRootEmbeddedCanvas *fEC_TB_Hit_t0; // Here by t_0 we mean "Online t_0" which is 't_start + t_0 + f_flight + t_prop + t_walk'
 
     /**
      * GUI frames
@@ -147,6 +149,7 @@ private:
     TArc circTBTrkDoca;
     TCanvas *c_DCHits[nSec];
     TCanvas *c_Chi2Seg;
+    TCanvas *c_TBT0; // Time based T0
 
     TH2F *h_DC_Segments_[nSec];
 
@@ -158,6 +161,7 @@ private:
      */
 
     TH1D *h_Chi2_SegFit_[nSec];
+    TH1D *h_TBT0_[nSec][nSL];   // T0 of time based hits. Here by t_0 we mean "Online t_0" which is 't_start + t_0 + f_flight + t_prop + t_walk'
 
 
 
