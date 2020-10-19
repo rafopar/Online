@@ -152,9 +152,6 @@ void SegFinder::FindSegmentCandidates() {
         //for (DCHit curhit : localhits[0]) {
 
         for (std::set<DCHit>::iterator it = localhits[0].begin(); it != localhits[0].end(); it++) {
-            cout << "Kuku1" << endl;
-
-            cout<<"Iterator index is "<<std::distance(localhits[0].begin(), it)<<endl;
             
             DCHit curHit = *it;
 
@@ -165,7 +162,7 @@ void SegFinder::FindSegmentCandidates() {
             int curminwireNo = iw;
             int curmaxwireNo = iw;
             
-            cout<<"curHit.wireNo is "<<curHit.wireNo<<endl;
+//            cout<<"curHit.wireNo is "<<curHit.wireNo<<endl;
             
             if (localhits[0].find(DCHit(0, 0., curHit.wireNo + 1, 0., 0., 0., 0.)) != localhits[0].end()) {
 
@@ -179,7 +176,6 @@ void SegFinder::FindSegmentCandidates() {
              * So current algorithm will keep only segment candidates which have a hit in the 1st later of each SL
              * Later this should be changed of course.
              */
-            cout << "Kuku2" << endl;
 
             int nLayer = 1; // This variable shows the number of layers of the segment
             for (int ilayer = 1; ilayer < nlayerPerSL; ilayer++) {
