@@ -28,6 +28,8 @@ SegDisplay::SegDisplay(const TGWindow *p, UInt_t w, UInt_t h) {
 
     p_wind = p;
 
+    fMain_docaPars = NULL;
+
     fMain = new TGMainFrame(p, w, h, kHorizontalFrame);
     fMain->Connect("CloseWindow()", "SegDisplay", this, "CloseApp()");
 
@@ -69,6 +71,10 @@ SegDisplay::SegDisplay(const TGWindow *p, UInt_t w, UInt_t h) {
     TGTextButton *fBut_ResetDocaPars = new TGTextButton(fG_docaControls, "&Reset Doca Parameters");
     fBut_ResetDocaPars->Connect("Clicked()", "SegDisplay", this, "ResetDoca()");
     fG_docaControls->AddFrame(fBut_ResetDocaPars, new TGLayoutHints(kLHintsTop, 1, 1, 1, 1));
+
+    TGTextButton *fBut_OpenDocaParWindow = new TGTextButton(fG_docaControls, "&Set detailed Doca Pars");
+    fBut_OpenDocaParWindow->Connect("Clicked()", "SegDisplay", this, "SetManualDOCAPars()");
+    fG_docaControls->AddFrame(fBut_OpenDocaParWindow, new TGLayoutHints(kLHintsTop, 1, 1, 1, 1));
 
     TGHorizontalFrame * fr_TMinMax[nSL];
     TGLabel * lbl_MInMax[nSL];
@@ -132,7 +138,7 @@ SegDisplay::SegDisplay(const TGWindow *p, UInt_t w, UInt_t h) {
      * Tabs
      */
 
-    fTab = new TGTab(fMain, 1500, 100);
+    fTab = new TGTab(fMain, 1400, 100);
     fTab->Connect("Selected(Int_t)", "SegDisplay", this, "DoTab(Int_t)");
 
     TGCompositeFrame *tf_DCHits = (TGCompositeFrame*) fTab->AddTab("Segments");
@@ -140,7 +146,7 @@ SegDisplay::SegDisplay(const TGWindow *p, UInt_t w, UInt_t h) {
     // A Horizontal frame that will contain canvases for secors 1, 2 and 3
     TGHorizontalFrame *fr_DCHitsSec_123 = new TGHorizontalFrame(tf_DCHits, 30, 10);
     for (int i = 0; i < 3; i++) {
-        fEC_DCHits[i] = new TRootEmbeddedCanvas(Form("fEC_DCHits_%d", i), fr_DCHitsSec_123, 380, 380);
+        fEC_DCHits[i] = new TRootEmbeddedCanvas(Form("fEC_DCHits_%d", i), fr_DCHitsSec_123, 390, 390);
 
         fr_DCHitsSec_123->AddFrame(fEC_DCHits[i], new TGLayoutHints(kLHintsCenterX, 2, 2, 2, 2));
     }
@@ -149,7 +155,7 @@ SegDisplay::SegDisplay(const TGWindow *p, UInt_t w, UInt_t h) {
     // A Horizontal frame that will contain canvases for secors 1, 2 and 3
     TGHorizontalFrame *fr_DCHitsSec_456 = new TGHorizontalFrame(tf_DCHits, 30, 10);
     for (int i = 3; i < 6; i++) {
-        fEC_DCHits[i] = new TRootEmbeddedCanvas(Form("fEC_DCHits_%d", i), fr_DCHitsSec_456, 380, 380);
+        fEC_DCHits[i] = new TRootEmbeddedCanvas(Form("fEC_DCHits_%d", i), fr_DCHitsSec_456, 390, 390);
         fr_DCHitsSec_456->AddFrame(fEC_DCHits[i], new TGLayoutHints(kLHintsCenterX, 2, 2, 2, 2));
     }
     tf_DCHits->AddFrame(fr_DCHitsSec_456, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY, 2, 2, 2, 2));
@@ -159,11 +165,27 @@ SegDisplay::SegDisplay(const TGWindow *p, UInt_t w, UInt_t h) {
 
     TGCompositeFrame *tf_FitQual = (TGCompositeFrame*) fTab->AddTab("Fit quality");
 
-    fEC_Chi2Seg = new TRootEmbeddedCanvas("fEC_Chi2Seg", tf_FitQual, 1050, 700);
-    tf_FitQual->AddFrame(fEC_Chi2Seg, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY, 2, 2, 2, 2));
+    fChi2Tab = new TGTab(tf_FitQual, 1400, 900);
+    fChi2Tab->Connect("Selected(Int_t)", "SegDisplay", this, "DoTab(Int_t)");
+
+    tf_FitQual->AddFrame(fChi2Tab, new TGLayoutHints(kLHintsRight, 2, 2, 2, 2));
+
+    TGCompositeFrame *tf_Chi2All = (TGCompositeFrame*) fChi2Tab->AddTab("Chi2 All");
+
+    fEC_Chi2Seg = new TRootEmbeddedCanvas("fEC_Chi2Seg", tf_Chi2All, 1200, 775);
+    tf_Chi2All->AddFrame(fEC_Chi2Seg, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY, 2, 2, 2, 2));
+
+    TGCompositeFrame *tf_Chi2TBSegMatched = (TGCompositeFrame*) fChi2Tab->AddTab("Chi2 TBSegMatched");
+    fEC_Chi2SegTBSegMatch = new TRootEmbeddedCanvas("fEC_Chi2SegTBSegMatch", tf_Chi2TBSegMatched, 1200, 775);
+    tf_Chi2TBSegMatched->AddFrame(fEC_Chi2SegTBSegMatch, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY, 2, 2, 2, 2));
+
+    TGCompositeFrame *tf_chi2Eff = (TGCompositeFrame*) fChi2Tab->AddTab("Chi2 Cut Efficiency");
+    fEC_Chi2CutEff = new TRootEmbeddedCanvas("fEC_Chi2SegTBSegMatch", tf_chi2Eff, 1200, 775);
+    tf_chi2Eff->AddFrame(fEC_Chi2CutEff, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY, 2, 2, 2, 2));
+    //c_Chi2CutEff
 
     TGCompositeFrame *tf_TBHits = (TGCompositeFrame*) fTab->AddTab("TB Hits");
-    fEC_TB_Hit_t0 = new TRootEmbeddedCanvas("fEC_TB_Hit_t0", tf_TBHits, 1050, 700);
+    fEC_TB_Hit_t0 = new TRootEmbeddedCanvas("fEC_TB_Hit_t0", tf_TBHits, 1200, 700);
     tf_TBHits->AddFrame(fEC_TB_Hit_t0, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY, 2, 2, 2, 2));
 
     fMain->AddFrame(vframe, new TGLayoutHints(kLHintsLeft, 2, 2, 2, 2));
@@ -195,6 +217,11 @@ void SegDisplay::InitSettings() {
 
     lineTBSeg = TLine();
     lineTBSeg.SetLineColor(4);
+
+    //latChi2Raw = TLatex();
+    latChi2Raw.SetTextColor(1);
+    latChi2Raw.SetTextFont(42);
+    //latChi2Raw.SetNDC();
 
     circRawDoca = TArc();
     circRawDoca.SetLineColor(1);
@@ -228,6 +255,12 @@ void SegDisplay::InitSettings() {
     c_Chi2Seg = fEC_Chi2Seg->GetCanvas();
     c_Chi2Seg->Divide(3, 2);
 
+    c_Chi2SegTBSegMatched = fEC_Chi2SegTBSegMatch->GetCanvas();
+    c_Chi2SegTBSegMatched->Divide(3, 2);
+
+    c_Chi2CutEff = fEC_Chi2CutEff->GetCanvas();
+    c_Chi2CutEff->Divide(3, 2);
+
     c_TBT0 = fEC_TB_Hit_t0->GetCanvas();
     c_TBT0->Divide(3, 2);
 
@@ -245,11 +278,20 @@ void SegDisplay::InitSettings() {
         //        h_DC_Segments_[isec]->SetStats(0);
 
         c_Chi2Seg->cd(isec + 1)->SetLogx();
+        c_Chi2SegTBSegMatched->cd(isec + 1)->SetLogx();
+        c_Chi2CutEff->cd(isec + 1)->SetLogx();
         h_Chi2_SegFit_[isec] = new TH1D(Form("h_Chi2_SegFit_%d", isec), "", nChi2Bins, chi2Bins);
 
         for (int iSL = 0; iSL < nSL; iSL++) {
             h_TBT0_[isec][iSL] = new TH1D(Form("h_TBT0_%d_%d", isec, iSL), "", 200, 50., 210.);
             h_TBT0_[isec][iSL]->SetLineColor(iSL + 1);
+
+            h_Chi2_SegFitSeparated_[isec][iSL] = new TH1D(Form("h_Chi2_SegFit_%d_%d", isec, iSL), "", nChi2Bins, chi2Bins);
+            h_Chi2_SegFitSeparated_[isec][iSL]->SetLineColor(iSL + 1);
+            h_Chi2_SegFitSeparatedTBHitMatched_[isec][iSL] = new TH1D(Form("h_Chi2_SegFitSeparatedTBHitMatched_isec_%d_%d", isec, iSL), "", nChi2Bins, chi2Bins);
+            h_Chi2_SegFitSeparatedTBHitMatched_[isec][iSL]->SetLineColor(iSL + 1);
+            h_Chi2_CutEff_[isec][iSL] = new TH1D(Form("h_Chi2_CutEff_%d_%d", isec, iSL), "", nChi2Bins, chi2Bins);
+            h_Chi2_CutEff_[isec][iSL]->SetLineColor(iSL + 1);
         }
     }
     cout << "**** InitSettings Kuku3" << endl;
@@ -293,6 +335,43 @@ void SegDisplay::ReadDocaPars() {
 
 }
 
+/**
+ * 
+ * @param seg1
+ * @param seg2z
+ * @return true if seg1 and seg2 are coincide. Here coincidence means, there are
+ * at least three DC hit that these segments share.
+ */
+bool SegDisplay::CompareSegments(vector<DCHit> &seg1, vector<DCHit> &seg2) {
+
+    int nMatchHits = 0;
+
+    for (DCHit hit1 : seg1) {
+
+        //cout << "******************* The size of seg1 is " << seg1.size() << "    The size of seg2 is " << seg2.size() << endl;
+        for (DCHit hit2 : seg2) {
+            //            cout << "************************************************" << endl;
+            //            cout << "Sectors     : " << hit1.sector << "   " << hit2.sector << endl;
+            //            cout << "Layers      : " << hit1.layer << "   " << hit2.layer << endl;
+            //            cout << "Wire numbers: " << hit1.wireNo << "   " << hit2.wireNo << endl;
+
+            if (hit1 == hit2) {
+                //                cout << "!!! MATHCH, going to the next Raw DC Hit" << endl;
+                nMatchHits = nMatchHits + 1;
+                break;
+            }
+
+        }
+
+        if (nMatchHits >= nHitMatchPerSeg) {
+            //cout<<"Ok, segments are matched. At the moment the number of matched hits is "<<nMatchHits<<endl;
+            break;
+        }
+    }
+
+    return nMatchHits >= nHitMatchPerSeg ? true : false;
+}
+
 bool SegDisplay::RunEvents(int nev) {
 
     if (!IsFileOpened) {
@@ -306,11 +385,26 @@ bool SegDisplay::RunEvents(int nev) {
             cout.flush() << "Processed " << i + 1 << " events \r";
         }
 
+        /*
+         * Before going to next event reset some variables
+         */
+
+        for (int isec = 0; isec < nSec; isec++) {
+            for (int iSL = 0; iSL < nSL; iSL++) {
+                tbSegments[isec][iSL].clear();
+                tbSegments[isec][iSL].shrink_to_fit();
+            }
+        }
+
         if (fReader.next() == true) {
 
             //cout << "Going to the next event" << endl;
 
             fReader.read(fEvent);
+
+            if (but_TBSegs->IsOn()) {
+                ProcessTBSegs(fEvent);
+            }
 
             if (but_rawHits->IsOn() || but_rawSegs->IsOn()) {
                 ProcessRawDCSeg(fEvent);
@@ -324,9 +418,6 @@ bool SegDisplay::RunEvents(int nev) {
                 ProcessTBHits(fEvent);
             }
 
-            if (but_TBSegs->IsOn()) {
-                ProcessTBSegs(fEvent);
-            }
 
         } else {
             return false;
@@ -355,6 +446,11 @@ void SegDisplay::Next() {
         //        h_DC_Segments_[isec]->GetXaxis()->UnZoom();
         //        h_DC_Segments_[isec]->Draw();
     }
+
+    /*
+     * We need to clear up TLatex objects otherwise it could result in a memory leak
+     */
+
     IsSingleEvent = true;
     RunEvents(1);
 
@@ -392,19 +488,56 @@ void SegDisplay::AnalyzeNEvents() {
     for (int isec = 0; isec < DCConstants::nSect; isec++) {
         c_Chi2Seg->cd(isec + 1);
         ConvertDifferential(h_Chi2_SegFit_[isec]);
-        h_Chi2_SegFit_[isec]->Draw();
+        //h_Chi2_SegFit_[isec]->Draw();
 
         double maxVal = 0;
+        ConvertDifferential(h_Chi2_SegFitSeparated_[isec][0]);
+        h_Chi2_SegFitSeparated_[isec][0]->Draw();
+        for (int iSL = 1; iSL < nSL; iSL++) {
+            ConvertDifferential(h_Chi2_SegFitSeparated_[isec][iSL]);
+            maxVal = TMath::Max(maxVal, h_Chi2_SegFitSeparated_[isec][iSL]->GetMaximum());
+            h_Chi2_SegFitSeparated_[isec][iSL]->Draw("Same");
+        }
+        h_Chi2_SegFitSeparated_[isec][0]->SetMaximum(1.05 * maxVal);
+
+        c_Chi2SegTBSegMatched->cd(isec + 1);
+        ConvertDifferential(h_Chi2_SegFitSeparatedTBHitMatched_[isec][0]);
+        maxVal = 0;
+        h_Chi2_SegFitSeparatedTBHitMatched_[isec][0]->Draw();
+        for (int iSL = 1; iSL < nSL; iSL++) {
+            ConvertDifferential(h_Chi2_SegFitSeparatedTBHitMatched_[isec][iSL]);
+            maxVal = TMath::Max(maxVal, h_Chi2_SegFitSeparatedTBHitMatched_[isec][iSL]->GetMaximum());
+            h_Chi2_SegFitSeparatedTBHitMatched_[isec][iSL]->Draw("Same");
+        }
+        h_Chi2_SegFitSeparatedTBHitMatched_[isec][0]->SetMaximum(1.05 * maxVal);
+
+
+        c_Chi2CutEff->cd(isec + 1);
+
+        for (int iSL = 0; iSL < nSL; iSL++) {
+            h_Chi2_CutEff_[isec][iSL] = (TH1D*) h_Chi2_SegFitSeparatedTBHitMatched_[isec][iSL]->GetCumulative(1);
+            h_Chi2_CutEff_[isec][iSL]->SetName(Form("h_Chi2_CutEff_%d_%d", isec, iSL));
+            h_Chi2_CutEff_[isec][iSL]->Scale(1. / h_Chi2_CutEff_[isec][iSL]->GetBinContent(h_Chi2_CutEff_[isec][iSL]->GetMaximumBin()));
+
+            iSL == 0 ? h_Chi2_CutEff_[isec][iSL]->Draw("hist") : h_Chi2_CutEff_[isec][iSL]->Draw("hist Same");
+        }
+        //h_Chi2_CutEff_
+        maxVal = 0;
         c_TBT0->cd(isec + 1);
         h_TBT0_[isec][0]->Draw();
         for (int iSL = 1; iSL < nSL; iSL++) {
             h_TBT0_[isec][iSL]->Draw("Same");
             maxVal = TMath::Max(maxVal, h_TBT0_[isec][iSL]->GetMaximum());
         }
-        h_TBT0_[isec][0]->SetMaximum(1.05*maxVal);
+        h_TBT0_[isec][0]->SetMaximum(1.05 * maxVal);
     }
     c_Chi2Seg->Modified();
     c_Chi2Seg->Update();
+    c_Chi2SegTBSegMatched->Modified();
+    c_Chi2SegTBSegMatched->Update();
+    c_Chi2CutEff->Modified();
+    c_Chi2CutEff->Update();
+
     c_TBT0->Modified();
     c_TBT0->Update();
 }
@@ -496,7 +629,22 @@ bool SegDisplay::ProcessRawDCSeg(hipo::event &event) {
         for (vector<DCHit> curSegm : v_segments) {
 
             if (curSegm.size() >= 5 && curSegm.size() < 12) {
+
+                int curSec = curSegm.at(0).sector;
+                int curSL = curSegm.at(0).layer / 6;
+
+                bool tbSegMatched = false;
+
+                for (vector<DCHit> curTBSeg : tbSegments[curSec][curSL]) {
+
+                    if (CompareSegments(curSegm, curTBSeg)) {
+                        tbSegMatched = true;
+                        break;
+                    }
+                }
+
                 SegFitter segFitter(curSegm);
+
 
                 double chi2 = segFitter.GetFitChi2();
                 //h_chi2_1.Fill(chi2);
@@ -507,16 +655,24 @@ bool SegDisplay::ProcessRawDCSeg(hipo::event &event) {
                 double x_0 = curSegm.at(0).x < curSegm.at(curSegm.size() - 1).x ? curSegm.at(0).x - curSegm.at(0).r : curSegm.at(curSegm.size() - 1).x - curSegm.at(curSegm.size() - 1).r;
                 double x_max = curSegm.at(0).x > curSegm.at(curSegm.size() - 1).x ? curSegm.at(0).x + curSegm.at(0).r : curSegm.at(curSegm.size() - 1).x + curSegm.at(curSegm.size() - 1).r;
 
+                int SL = curSegm.at(0).layer / DCConstants::nLayerperSL;
+
                 if (IsSingleEvent) {
-                    /*if (chi2 > 500000)*/
+                    /* if ( chi2 > 20000. )*/
                     {
                         c_DCHits[isec]->cd();
                         if (but_rawSegs->IsOn()) {
                             lineRawFit.DrawLine(x_0, slope * x_0 + offset, x_max, slope * x_max + offset);
+                            latChi2Raw.DrawLatex((x_max - DCConsts.xMin)/(DCConsts.xMax - DCConsts.xMin), (slope * x_max + offset - DCConsts.yMin)/(DCConsts.yMax - DCConsts.yMin), Form("%1.2f", chi2));
+                            v_chi2Texts.push_back(latChi2Raw.DrawLatex(x_max, slope * x_max + offset, Form("%1.2f", chi2)));
                         }
                     }
                 } else {
                     h_Chi2_SegFit_[isec]->Fill(chi2);
+                    h_Chi2_SegFitSeparated_[isec][SL]->Fill(chi2);
+                    if (tbSegMatched) {
+                        h_Chi2_SegFitSeparatedTBHitMatched_[isec][SL]->Fill(chi2);
+                    }
                 }
             }
 
@@ -608,28 +764,54 @@ bool SegDisplay::ProcessTBHits(hipo::event&) {
 bool SegDisplay::ProcessTBSegs(hipo::event&) {
     fEvent.getStructure(fBTBSegs);
 
+    // In a rush now, but this should be done properly, i.e. check if the bank exist etc...
+    fEvent.getStructure(fBDCtdc);
+
     int nSegs = fBTBSegs.getRows();
 
-    if (IsSingleEvent) {
 
-        for (int iseg = 0; iseg < nSegs; iseg++) {
 
-            int sec = fBTBSegs.getInt("sector", iseg) - 1;
-            double x1 = double(fBTBSegs.getFloat("SegEndPoint1X", iseg));
-            double x2 = double(fBTBSegs.getFloat("SegEndPoint2X", iseg));
-            double z1 = double(fBTBSegs.getFloat("SegEndPoint1Z", iseg));
-            double z2 = double(fBTBSegs.getFloat("SegEndPoint2Z", iseg));
 
-            double x1Rot = x1 * cos(tiltAngle) - z1 * sin(tiltAngle);
-            double z1Rot = x1 * sin(tiltAngle) + z1 * cos(tiltAngle);
-            double x2Rot = x2 * cos(tiltAngle) - z2 * sin(tiltAngle);
-            double z2Rot = x2 * sin(tiltAngle) + z2 * cos(tiltAngle);
+    for (int iseg = 0; iseg < nSegs; iseg++) {
 
+        int sec = fBTBSegs.getInt("sector", iseg) - 1;
+        int sl = fBTBSegs.getInt("superlayer", iseg) - 1;
+
+        vector<DCHit> curSegm;
+
+        for (int ihit = 0; ihit < 11; ihit++) {
+            int hitID = fBTBSegs.getInt(Form("Hit%d_ID", ihit + 1), iseg) - 1;
+
+            if (hitID >= 0) {
+
+                int wireNo = TMath::Max(fBDCtdc.getInt("component", hitID) - 2, 0);
+                int layer = fBDCtdc.getInt("layer", hitID) - 1;
+
+                curSegm.push_back(DCHit(sec, layer, wireNo, -1, -1, -1, -1));
+            } else {
+                break;
+            }
+
+        }
+
+        tbSegments[sec][sl].push_back(curSegm);
+
+        double x1 = double(fBTBSegs.getFloat("SegEndPoint1X", iseg));
+        double x2 = double(fBTBSegs.getFloat("SegEndPoint2X", iseg));
+        double z1 = double(fBTBSegs.getFloat("SegEndPoint1Z", iseg));
+        double z2 = double(fBTBSegs.getFloat("SegEndPoint2Z", iseg));
+
+        double x1Rot = x1 * cos(tiltAngle) - z1 * sin(tiltAngle);
+        double z1Rot = x1 * sin(tiltAngle) + z1 * cos(tiltAngle);
+        double x2Rot = x2 * cos(tiltAngle) - z2 * sin(tiltAngle);
+        double z2Rot = x2 * sin(tiltAngle) + z2 * cos(tiltAngle);
+
+        if (IsSingleEvent) {
             c_DCHits[sec]->cd();
             lineTBSeg.DrawLine(x1Rot, z1Rot, x2Rot, z2Rot);
         }
-
     }
+
     return true;
 }
 
@@ -776,6 +958,7 @@ void SegDisplay::MouseAction(Int_t ev, Int_t ix, Int_t iy, TObject* selected) {
 
 
 
+            //ProcessRawDCSeg(fEvent);
             ((TCanvas*) selected)->Range(xNewMin, yNewMin, xNewMax, yNewMax);
             ((TCanvas*) selected)->Modified();
             ((TCanvas*) selected)->Update();
@@ -803,6 +986,34 @@ void SegDisplay::UnzoomAll() {
 
     // Update the viewer
     UpdateEvent();
+}
+
+void SegDisplay::SetManualDOCAPars() {
+
+    if (fMain_docaPars) {
+        fMain_docaPars->RaiseWindow();
+        return;
+    }
+
+    fMain_docaPars = new TGTransientFrame(gClient->GetRoot(), p_wind, 400, 200);
+    fMain_docaPars->Connect("CloseWindow()", "SegDisplay", this, "CloseManualDOCAPars()");
+    fMain_docaPars->SetCleanup(kDeepCleanup); // Without this line it crashes, when one closes the window
+    fMain_docaPars->DontCallClose(); // To avoid double deletions
+
+    fMain_docaPars->SetWindowName("Set Doca parameters individually");
+
+    // Map all sub-widows of main frame
+    fMain_docaPars->MapSubwindows();
+    // Initialize the layout algorithm
+    fMain_docaPars->Resize(fMain_docaPars->GetDefaultSize());
+    // Map main frame
+    fMain_docaPars->MapWindow();
+
+}
+
+void SegDisplay::CloseManualDOCAPars() {
+    fMain_docaPars->CloseWindow();
+    fMain_docaPars = NULL;
 }
 
 SegDisplay::SegDisplay(const SegDisplay & orig) {

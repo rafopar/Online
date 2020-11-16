@@ -64,6 +64,7 @@ public:
     DCHit(const DCHit&);
 
     bool operator<(const DCHit&) const;
+    bool operator==(const DCHit&) const;
 
     unsigned int sector;
     unsigned int layer;

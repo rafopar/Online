@@ -113,6 +113,14 @@ bool DCHit::operator<(const DCHit &arg) const {
     return (this->wireNo < arg.wireNo);
 }
 
+bool DCHit::operator==(const DCHit &arg) const {
+
+    /**
+     * This assumes sector and layer are the same.
+     * By design only hits from the same sector/layer should be in the same set
+     */
+    return (this->wireNo == arg.wireNo && this->layer == arg.layer );
+}
 
 /**
  *
