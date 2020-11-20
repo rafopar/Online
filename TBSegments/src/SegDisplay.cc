@@ -19,6 +19,7 @@
 #include <TApplication.h>
 #include <TGFileDialog.h>
 
+#include <chrono>
 
 using namespace std;
 
@@ -379,6 +380,7 @@ bool SegDisplay::RunEvents(int nev) {
         return false;
     }
 
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     for (int i = 0; i < nev; i++) {
 
         if (i + 1 % 5000 == 0) {
@@ -420,9 +422,17 @@ bool SegDisplay::RunEvents(int nev) {
 
 
         } else {
+            std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+            double dt_inSec = 1.e-3 * std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+            cout << "Total elapsed time for processing " << nev << " events is " << dt_inSec << " sec,  and the average time per event is " << dt_inSec / double(i) <<" sec"<< endl;
             return false;
         }
     }
+
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    double dt_inSec = 1.e-3 * std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+    cout << "Total elapsed time for processing " << nev << " events is " << dt_inSec << " sec,  and the average time per event is " << dt_inSec / double(nev)<<" sec" << endl;
+
 
     return true;
 }
@@ -663,7 +673,7 @@ bool SegDisplay::ProcessRawDCSeg(hipo::event &event) {
                         c_DCHits[isec]->cd();
                         if (but_rawSegs->IsOn()) {
                             lineRawFit.DrawLine(x_0, slope * x_0 + offset, x_max, slope * x_max + offset);
-                            latChi2Raw.DrawLatex((x_max - DCConsts.xMin)/(DCConsts.xMax - DCConsts.xMin), (slope * x_max + offset - DCConsts.yMin)/(DCConsts.yMax - DCConsts.yMin), Form("%1.2f", chi2));
+                            latChi2Raw.DrawLatex((x_max - DCConsts.xMin) / (DCConsts.xMax - DCConsts.xMin), (slope * x_max + offset - DCConsts.yMin) / (DCConsts.yMax - DCConsts.yMin), Form("%1.2f", chi2));
                             v_chi2Texts.push_back(latChi2Raw.DrawLatex(x_max, slope * x_max + offset, Form("%1.2f", chi2)));
                         }
                     }
