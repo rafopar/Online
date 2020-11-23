@@ -152,9 +152,6 @@ void SegFinder::FindSegmentCandidates() {
 
     for (int SL = 0; SL < nSL; SL++) {
 
-        int local1stLayer = nlayerPerSL*SL;
-        int local2ndLayer = nlayerPerSL*SL;
-
         std::set<DCHit> *localhits = &hits[nlayerPerSL * SL];
 
         //for (DCHit curhit : localhits[0]) {
