@@ -112,6 +112,8 @@ private:
 
 class SegFitter {
 public:
+    SegFitter();
+    SegFitter(SegFitter &);
     SegFitter(vector<DCHit>);
 
     vector<DCHit> GetRotatedHits(const vector<DCHit>, double);

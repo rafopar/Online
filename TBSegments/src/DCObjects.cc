@@ -119,7 +119,7 @@ bool DCHit::operator==(const DCHit &arg) const {
      * This assumes sector and layer are the same.
      * By design only hits from the same sector/layer should be in the same set
      */
-    return (this->wireNo == arg.wireNo && this->layer == arg.layer );
+    return (this->wireNo == arg.wireNo /*&& this->layer == arg.layer */);
 }
 
 /**
@@ -157,8 +157,8 @@ void SegFinder::FindSegmentCandidates() {
         //for (DCHit curhit : localhits[0]) {
 
         for (std::set<DCHit>::iterator it = localhits[0].begin(); it != localhits[0].end(); it++) {
-            
-            DCHit curHit = *it;
+
+            DCHit curHit = *it; // -> Can make this as a pointer? <<<<<<<<<<<<<<<<<<<<<<<<========================
 
             int iw = curHit.wireNo;
 
@@ -166,9 +166,9 @@ void SegFinder::FindSegmentCandidates() {
             v_segm.push_back(curHit);
             int curminwireNo = iw;
             int curmaxwireNo = iw;
-            
-//            cout<<"curHit.wireNo is "<<curHit.wireNo<<endl;
-            
+
+            //            cout<<"curHit.wireNo is "<<curHit.wireNo<<endl;
+
             if (localhits[0].find(DCHit(0, 0., curHit.wireNo + 1, 0., 0., 0., 0.)) != localhits[0].end()) {
 
                 curmaxwireNo = curHit.wireNo + 1;
@@ -197,6 +197,7 @@ void SegFinder::FindSegmentCandidates() {
                 for (int iwire = curminwireNo - 2; iwire < curmaxwireNo + 3; iwire++) {
 
                     if (localhits[ilayer].find(DCHit(0, 0, iwire, 0., 0., 0., 0.)) != localhits[ilayer].end()) {
+                        //if ( std::find_if( localhits[ilayer].begin(), localhits[ilayer].end(), [&](const DCHit curHit ) { /*cout<<"wireNo = "<<curHit.wireNo<<"   iwire = "<<iwire<<"  Match = "<<(curHit == DCHit( 0, 0, iwire, 0., 0., 0., 0. ))<<endl;*/ return curHit == DCHit( 0, 0, iwire, 0., 0., 0., 0. ); } ) != localhits[ilayer].end() ) {
 
                         v_segm.push_back(*(localhits[ilayer].find(DCHit(0, 0, iwire, 0., 0., 0., 0.))));
                         hitFoundTHisLayer = true;
@@ -234,6 +235,15 @@ void SegFinder::FindSegmentCandidates() {
 /**
  * Class SegFitter
  */
+
+SegFitter::SegFitter( ) {
+}
+
+SegFitter::SegFitter(SegFitter &arg) {
+    this->fChi2 = arg.GetFitChi2();
+    this->offset = arg.GetOffset();
+    this->slope = arg.GetSlope();
+}
 
 SegFitter::SegFitter(vector<DCHit> hits) {
 
