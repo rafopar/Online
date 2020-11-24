@@ -149,6 +149,7 @@ private:
     TLine lineRawFit;
     TLine lineTBSeg;
     TArc circRawDoca;
+    TArc circRawDocaBest;
     TArc circHBTrkDoca;
     TArc circTBDoca;
     TArc circTBTrkDoca;

@@ -228,6 +228,11 @@ void SegDisplay::InitSettings() {
     circRawDoca.SetLineColor(1);
     circRawDoca.SetFillStyle(0);
 
+    circRawDocaBest = TArc();
+    circRawDocaBest.SetLineColor(3);
+    circRawDocaBest.SetLineWidth(2);
+    circRawDocaBest.SetFillStyle(0);
+
     circHBTrkDoca = TArc();
     circHBTrkDoca.SetLineColor(2);
     circHBTrkDoca.SetFillStyle(0);
@@ -424,14 +429,14 @@ bool SegDisplay::RunEvents(int nev) {
         } else {
             std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
             double dt_inSec = 1.e-3 * std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-            cout << "Total elapsed time for processing " << nev << " events is " << dt_inSec << " sec,  and the average time per event is " << dt_inSec / double(i) <<" sec"<< endl;
+            cout << "Total elapsed time for processing " << nev << " events is " << dt_inSec << " sec,  and the average time per event is " << dt_inSec / double(i) << " sec" << endl;
             return false;
         }
     }
 
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     double dt_inSec = 1.e-3 * std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-    cout << "Total elapsed time for processing " << nev << " events is " << dt_inSec << " sec,  and the average time per event is " << dt_inSec / double(nev)<<" sec" << endl;
+    cout << "Total elapsed time for processing " << nev << " events is " << dt_inSec << " sec,  and the average time per event is " << dt_inSec / double(nev) << " sec" << endl;
 
 
     return true;
@@ -647,25 +652,85 @@ bool SegDisplay::ProcessRawDCSeg(hipo::event &event) {
 
                 for (vector<DCHit> curTBSeg : tbSegments[curSec][curSL]) {
 
+                    // Checking if the current Raw Segment is matched to any recon TBsegment
                     if (CompareSegments(curSegm, curTBSeg)) {
                         tbSegMatched = true;
                         break;
                     }
                 }
 
-                SegFitter segFitter(curSegm);
+                vector<DCHit> v_LayerHit_[DCConstants::nLayerperSL];
+                int indLayer[DCConstants::nLayerperSL] = {0};
+
+                /**
+                 * We want make sub segments from the given segment, such in the sub-segment each layer will only have
+                 * a single hit in the layer
+                 */
+
+                for (DCHit curHit : curSegm) {
+                    v_LayerHit_[curHit.layer % DCConstants::nLayerperSL].push_back(curHit);
+                }
+
+                vector< vector<DCHit> > vv;
+                for (int iL = 0; iL < DCConstants::nLayerperSL; iL++) {
+                    if (v_LayerHit_[iL].size() > 0) {
+                        vv.push_back(v_LayerHit_[iL]);
+                    }
+                }
+
+                double chi2Min = 1.e25;
+                double chi2;
+                vector<DCHit> segMinChi2;
+                SegFitter segFitMinChi2;
+
+                // Doing something similar to the algorithm in https://stackoverflow.com/questions/46568287/implementing-an-iterator-over-combinations-of-many-vectors
+                std::vector<std::vector<DCHit>::iterator> vit;
+
+                for (auto& v : vv) {
+                    vit.push_back(v.begin());
+                }
+                int K = vv.size();
+
+                while (vit[0] != vv[0].end()) {
+                    vector<DCHit> curSubSeg;
+                    //                    std::cout << "Processing combination: [";
+                    for (auto& i : vit) {
+                        //                      std::cout << " (" << (*i).layer << "," << (*i).wireNo << ") ";
+                        curSubSeg.push_back(*i);
+                    }
+                    //                std::cout << "]\n";
+
+                    SegFitter segFitter(curSubSeg);
+                    //              cout << "The size of cur SubSeg is " << curSubSeg.size() << endl;
+                    if (segFitter.GetFitChi2() < chi2Min) {
+                        //                cout << "Cur MinChi2 = " << segFitter.GetFitChi2() << endl;
+                        chi2Min = segFitter.GetFitChi2();
+                        segMinChi2 = curSubSeg;
+                        segFitMinChi2 = segFitter;
+                    }
+
+                    // increment "odometer" by 1
+                    ++vit[K - 1];
+                    for (int i = K - 1; (i > 0) && (vit[i] == vv[i].end()); --i) {
+                        vit[i] = vv[i].begin();
+                        ++vit[i - 1];
+                    }
+                }
 
 
-                double chi2 = segFitter.GetFitChi2();
+                //double chi2 = segFitter.GetFitChi2();
+                chi2 = chi2Min;
                 //h_chi2_1.Fill(chi2);
 
-                double slope = segFitter.GetSlope();
-                double offset = segFitter.GetOffset();
 
-                double x_0 = curSegm.at(0).x < curSegm.at(curSegm.size() - 1).x ? curSegm.at(0).x - curSegm.at(0).r : curSegm.at(curSegm.size() - 1).x - curSegm.at(curSegm.size() - 1).r;
-                double x_max = curSegm.at(0).x > curSegm.at(curSegm.size() - 1).x ? curSegm.at(0).x + curSegm.at(0).r : curSegm.at(curSegm.size() - 1).x + curSegm.at(curSegm.size() - 1).r;
 
-                int SL = curSegm.at(0).layer / DCConstants::nLayerperSL;
+                double slope = segFitMinChi2.GetSlope();
+                double offset = segFitMinChi2.GetOffset();
+                //                cout << "Size of MinChi2 Segment is " << segMinChi2.size() << endl;
+                double x_0 = segMinChi2.at(0).x < segMinChi2.at(segMinChi2.size() - 1).x ? segMinChi2.at(0).x - segMinChi2.at(0).r : segMinChi2.at(segMinChi2.size() - 1).x - segMinChi2.at(segMinChi2.size() - 1).r;
+                double x_max = segMinChi2.at(0).x > segMinChi2.at(segMinChi2.size() - 1).x ? segMinChi2.at(0).x + segMinChi2.at(0).r : segMinChi2.at(segMinChi2.size() - 1).x + segMinChi2.at(segMinChi2.size() - 1).r;
+
+                int SL = segMinChi2.at(0).layer / DCConstants::nLayerperSL;
 
                 if (IsSingleEvent) {
                     /* if ( chi2 > 20000. )*/
@@ -675,6 +740,12 @@ bool SegDisplay::ProcessRawDCSeg(hipo::event &event) {
                             lineRawFit.DrawLine(x_0, slope * x_0 + offset, x_max, slope * x_max + offset);
                             latChi2Raw.DrawLatex((x_max - DCConsts.xMin) / (DCConsts.xMax - DCConsts.xMin), (slope * x_max + offset - DCConsts.yMin) / (DCConsts.yMax - DCConsts.yMin), Form("%1.2f", chi2));
                             v_chi2Texts.push_back(latChi2Raw.DrawLatex(x_max, slope * x_max + offset, Form("%1.2f", chi2)));
+
+                            for (DCHit curSingleHit : segMinChi2 ) {
+                                cout<<curSingleHit.x<<"    "<<curSingleHit.y<<"   "<<curSingleHit.r<<endl;
+                                circRawDocaBest.DrawArc(curSingleHit.x, curSingleHit.y, curSingleHit.r);
+                            }
+
                         }
                     }
                 } else {
@@ -684,6 +755,7 @@ bool SegDisplay::ProcessRawDCSeg(hipo::event &event) {
                         h_Chi2_SegFitSeparatedTBHitMatched_[isec][SL]->Fill(chi2);
                     }
                 }
+
             }
 
         }
@@ -839,7 +911,7 @@ void SegDisplay::DoTab(Int_t tab) {
     cout << "Changed to the Tab " << tab << endl;
 }
 
-void SegDisplay::ConvertDifferential(TH1* h) {
+void SegDisplay::ConvertDifferential(TH1 * h) {
     for (int i = 0; i < h->GetNbinsX(); i++) {
         h->SetBinContent(i + 1, h->GetBinContent(i + 1) / h->GetBinWidth(i + 1));
     }
@@ -887,7 +959,7 @@ void SegDisplay::UpdateEvent() {
 
 }
 
-void SegDisplay::MouseAction(Int_t ev, Int_t ix, Int_t iy, TObject* selected) {
+void SegDisplay::MouseAction(Int_t ev, Int_t ix, Int_t iy, TObject * selected) {
 
     if (strcmp("TCanvas", selected->ClassName()) != 0) {
         return;
