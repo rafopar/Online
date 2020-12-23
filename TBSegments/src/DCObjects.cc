@@ -236,7 +236,7 @@ void SegFinder::FindSegmentCandidates() {
  * Class SegFitter
  */
 
-SegFitter::SegFitter( ) {
+SegFitter::SegFitter() {
 }
 
 SegFitter::SegFitter(SegFitter &arg) {
@@ -270,7 +270,8 @@ SegFitter::SegFitter(vector<DCHit> hits) {
 
         double chi2 = 0;
 
-        double x0 = FitCircles(v_rotatedHits, chi2);
+        //double x0 = FitCircles(v_rotatedHits, chi2);
+        double x0 = FitDotCombinatorics(v_rotatedHits, chi2);
 
         if (chi2 < chi2Min) {
             chi2Min = chi2;
@@ -330,11 +331,89 @@ double SegFitter::FitCircles(const vector<DCHit> v_inp, double &chi2) {
 
     TMath::RootsCubic(coef, a, b, c);
 
+    //cout << "************************* Start of Chi2 Calculation ****************************" << endl;
+
     for (int i = 0; i < v_inp.size(); i++) {
+
         chi2 = chi2 + TMath::Power((a - v_inp.at(i).x)*(a - v_inp.at(i).x) - v_inp.at(i).r * v_inp.at(i).r, 2) / TMath::Power(v_inp.at(i).err_r, 4);
+        //        cout << "a = " << a << "    x = " << v_inp.at(i).x<<"   r = " << v_inp.at(i).r << "    Err_r = " << v_inp.at(i).err_r << "    chi2 Point = "
+        //                << TMath::Power((a - v_inp.at(i).x)*(a - v_inp.at(i).x) - v_inp.at(i).r * v_inp.at(i).r, 2) / TMath::Power(v_inp.at(i).err_r, 4) << "    chi2 Tot = " << chi2 << endl;
     }
+    //    cout << "************************* End of of Chi2 Calculation ****************************" << endl;
 
     return a;
 
+
+}
+
+double SegFitter::FitDotCombinatorics(const vector<DCHit> v_inp, double &chi2Min) {
+
+
+    // number of hits
+    int n = v_inp.size();
+
+    // to keep track of next element in each of
+    // the n arrays
+    int* indices = new int[n];
+
+    // initialize with first element's index
+    for (int i = 0; i < n; i++) {
+        indices[i] = 0;
+    }
+
+
+    chi2Min = 1.e15;
+    double x0OfChi2Min = 1000.;
+
+    // The looping algorithm is copied from https://www.geeksforgeeks.org/combinations-from-n-arrays-picking-one-element-from-each-array/
+    while (1) {
+
+        double A = 0; // A = Sum x_i^{2}/sigm_i^{2};
+        double B = 0; // B = Sum 1./sigm_i^{2};
+
+        vector<double> hit_X;
+        vector<double> hit_Y;
+        vector<double> hit_err_X;
+
+        for (int i = 0; i < n; i++) {
+            hit_X.push_back(v_inp.at(i).x + v_inp.at(i).r * (2 * indices[i] - 1));
+            hit_Y.push_back(v_inp.at(i).y);
+            hit_err_X.push_back(v_inp.at(i).err_r);
+
+            A = A + hit_X.at(i) / (hit_err_X.at(i) * hit_err_X.at(i));
+            B = B + 1. / (hit_err_X.at(i) * hit_err_X.at(i));
+
+        }
+
+        double curX0 = A / B;
+        double curChi2 = 0;
+
+        for (int ii = 0; ii < hit_X.size(); ii++) {
+            curChi2 = curChi2 + (hit_X.at(ii) - curX0)* (hit_X.at(ii) - curX0) / (hit_err_X.at(ii) * hit_err_X.at(ii));
+        }
+
+        if (curChi2 < chi2Min) {
+            chi2Min = curChi2;
+            x0OfChi2Min = curX0;
+        }
+
+
+        int next = n - 1;
+
+        while (next >= 0 && (indices[next] + 1 >= 2)) {
+            next--;
+        }
+
+        if (next < 0) {
+            return x0OfChi2Min;
+        }
+
+        indices[next]++;
+
+        for (int i = next + 1; i < n; i++) {
+            indices[i] = 0;
+        }
+
+    }
 
 }

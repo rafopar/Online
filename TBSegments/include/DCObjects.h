@@ -118,6 +118,8 @@ public:
 
     vector<DCHit> GetRotatedHits(const vector<DCHit>, double);
     double FitCircles(const vector<DCHit> v_inp, double &chi2);
+    
+    double FitDotCombinatorics( const vector<DCHit> v_inp, double &chi2 );
 
     double GetSlope() const {
         return slope;
