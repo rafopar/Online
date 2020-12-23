@@ -276,7 +276,8 @@ void SegDisplay::InitSettings() {
      * Chi2 bins are not uniform
      */
     for (int i = 0; i < nChi2Bins + 1; i++) {
-        chi2Bins[i] = TMath::Power(10, double(i) / 15.);
+        chi2Bins[i] = TMath::Power(10, double(i) / 20.) - 1.;
+        //chi2Bins[i] = double(i)*1000/double(nChi2Bins);
     }
 
     for (int isec = 0; isec < DCConstants::nSect; isec++) {
@@ -608,7 +609,7 @@ bool SegDisplay::ProcessRawDCSeg(hipo::event &event) {
         w = TMath::Max(w, 0);
 
         if (w < 0) {
-            cout << "***************** Oho  wire number is negative  " << w << endl;
+            cout << "***************** Oho wire number is negative  " << w << endl;
             cin.ignore();
         }
 
@@ -620,7 +621,12 @@ bool SegDisplay::ProcessRawDCSeg(hipo::event &event) {
         double r = (SL == 2 || SL == 3) ? TMath::Min(DMax[SL], TMath::Max((tdc - tMin[SL]), float(0.)) * DMax[SL] / (tMax[SL] - 575. * (w + 1.) / double(DCConstants::nWirePerLayer) - tMin[SL])) :
                 TMath::Min(DMax[SL], TMath::Max((tdc - tMin[SL]), float(0.)) * DMax[SL] / (tMax[SL] - tMin[SL]));
         double x = TMath::Min(float(r), float(DMax[SL])) / DMax[SL];
-        double err_r = CalcDocaError(x) * DMax[SL];
+        
+        /**
+         *                 FIX Me
+         * the 0.1 should not be hardcoded
+         */
+        double err_r = 0.1 + CalcDocaError(x) * DMax[SL];
         //double err_r = 0.15 * r;
 
         if (IsSingleEvent) {
@@ -717,8 +723,7 @@ bool SegDisplay::ProcessRawDCSeg(hipo::event &event) {
                     }
                 }
 
-
-                //double chi2 = segFitter.GetFitChi2();
+                int ndf = segMinChi2.size() - 2;
                 chi2 = chi2Min;
                 //h_chi2_1.Fill(chi2);
 
@@ -738,8 +743,9 @@ bool SegDisplay::ProcessRawDCSeg(hipo::event &event) {
                         c_DCHits[isec]->cd();
                         if (but_rawSegs->IsOn()) {
                             lineRawFit.DrawLine(x_0, slope * x_0 + offset, x_max, slope * x_max + offset);
-                            latChi2Raw.DrawLatex((x_max - DCConsts.xMin) / (DCConsts.xMax - DCConsts.xMin), (slope * x_max + offset - DCConsts.yMin) / (DCConsts.yMax - DCConsts.yMin), Form("%1.2f", chi2));
-                            v_chi2Texts.push_back(latChi2Raw.DrawLatex(x_max, slope * x_max + offset, Form("%1.2f", chi2)));
+                            //latChi2Raw.DrawLatex((x_max - DCConsts.xMin) / (DCConsts.xMax - DCConsts.xMin), (slope * x_max + offset - DCConsts.yMin) / (DCConsts.yMax - DCConsts.yMin), Form("%1.2f", chi2/double(ndf)));
+                            latChi2Raw.DrawLatex(x_max, slope * x_max + offset, Form("%1.2f", chi2/double(ndf) ));
+                            //v_chi2Texts.push_back(latChi2Raw.DrawLatex(x_max, slope * x_max + offset, Form("%1.2f", chi2)));
 
                             for (DCHit curSingleHit : segMinChi2 ) {
                                 cout<<curSingleHit.x<<"    "<<curSingleHit.y<<"   "<<curSingleHit.r<<endl;
@@ -749,10 +755,10 @@ bool SegDisplay::ProcessRawDCSeg(hipo::event &event) {
                         }
                     }
                 } else {
-                    h_Chi2_SegFit_[isec]->Fill(chi2);
-                    h_Chi2_SegFitSeparated_[isec][SL]->Fill(chi2);
+                    h_Chi2_SegFit_[isec]->Fill(chi2/double(ndf));
+                    h_Chi2_SegFitSeparated_[isec][SL]->Fill(chi2/double(ndf));
                     if (tbSegMatched) {
-                        h_Chi2_SegFitSeparatedTBHitMatched_[isec][SL]->Fill(chi2);
+                        h_Chi2_SegFitSeparatedTBHitMatched_[isec][SL]->Fill(chi2/double(ndf));
                     }
                 }
 
