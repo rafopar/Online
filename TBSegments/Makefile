@@ -22,7 +22,7 @@ all:		DCObjects.o SegDisplay.o dict FitDCSegments.cc
 		ln -sf ${libTBSEGMENTS}.so.1.0.1 ${libTBSEGMENTS}.so.1; ln -sf ${libTBSEGMENTS}.so.1.0.1 ${libTBSEGMENTS}.so
 		cd ../;
 		mv src/*.pcm lib
-		$(CC) -o FitDCSegments.exe FitDCSegments.cc src/SegDisplayDict.cxx -I ./include -I./ $(ROOT_CFLAGS) $(ROOT_LIBS) $(HIPO_FLAGS) -L./lib -lTBSegments
+		$(CC) -o FitDCSegments.exe FitDCSegments.cc src/SegDisplayDict.cxx -I ./include -I./ $(ROOT_CFLAGS) $(ROOT_LIBS) -L./lib -lTBSegments $(HIPO_FLAGS)
 		
 DCObjects.o:	src/DCObjects.cc include/DCObjects.h
 		$(CC) $(CC_OBJ_FLAGS) src/DCObjects.cc -o $@ -I./include $(ROOT_CFLAGS) $(ROOT_LIBS)
