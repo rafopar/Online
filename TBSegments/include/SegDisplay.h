@@ -28,6 +28,7 @@
 
 // ===== Hipo headers =====
 #include <reader.h>
+#include <writer.h>
 #include <dictionary.h>
 
 class SegDisplay {
@@ -57,6 +58,7 @@ private:
     bool ProcessTBSegs(hipo::event &); // Processing time based DC Segments
 
     hipo::reader fReader; // The Hipo Reader
+    hipo::writer fwriter; // The Hipo Reader
     std::string fInpFileName; // Name of the input hipo file
     hipo::event fEvent; // Hipo event
     hipo::dictionary fFactory; // Hipo factory
