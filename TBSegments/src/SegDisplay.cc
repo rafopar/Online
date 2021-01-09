@@ -408,6 +408,7 @@ bool SegDisplay::RunEvents(int nev) {
 
             //cout << "Going to the next event" << endl;
 
+            IsPassedChi2Cut = false;
             fReader.read(fEvent);
 
             if (but_TBSegs->IsOn()) {
@@ -427,6 +428,10 @@ bool SegDisplay::RunEvents(int nev) {
             }
 
 
+            if( IsPassedChi2Cut ){
+                fwriter.addEvent(fEvent);
+            }
+            
         } else {
             std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
             double dt_inSec = 1.e-3 * std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
@@ -449,6 +454,7 @@ void SegDisplay::CloseApp() {
     //    for (int iSec = 0; iSec < nSec; iSec++) {
     //        delete h_DC_Segments_[iSec];
     //    }
+    fwriter.close();
     gApplication->Terminate(0);
 }
 
@@ -582,6 +588,11 @@ bool SegDisplay::InitFile(std::string fname) {
     fBTBHits = hipo::bank(fFactory.getSchema("TimeBasedTrkg::TBHits"));
     fBTBSegs = hipo::bank(fFactory.getSchema("TimeBasedTrkg::TBSegments"));
     IsFileOpened = true;
+    
+    chi2Cut = 12;
+    fwriter.getDictionary().addSchema(fFactory.getSchema("DC::tdc"));
+    fwriter.open(Form("Skimmed_testDCRB_Chi2Cut_%1.1f.hipo", chi2Cut));
+    
     return IsFileOpened;
 }
 
@@ -728,6 +739,9 @@ bool SegDisplay::ProcessRawDCSeg(hipo::event &event) {
                 //h_chi2_1.Fill(chi2);
 
 
+                if( chi2 < chi2Cut ){
+                    IsPassedChi2Cut = true;
+                }
 
                 double slope = segFitMinChi2.GetSlope();
                 double offset = segFitMinChi2.GetOffset();

@@ -75,6 +75,8 @@ private:
 
     bool IsFileOpened;
     bool IsSingleEvent;
+    bool IsPassedChi2Cut;
+    double chi2Cut;
 
         
     /**
