@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
     
     TApplication displayApp("displayApp", &argc, argv);
     
-    RunSegDisplay();
+    RunSegDisplay(); 
     
     displayApp.Run();
     
